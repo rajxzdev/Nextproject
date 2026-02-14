@@ -10,14 +10,12 @@
 </head>
 <body>
 
-    <!-- Galaxy Background -->
     <canvas id="galaxyCanvas"></canvas>
     <div class="aurora aurora-1"></div>
     <div class="aurora aurora-2"></div>
     <div class="aurora aurora-3"></div>
     <div class="grain-overlay"></div>
 
-    <!-- App -->
     <div class="app">
         <!-- Nav Bar -->
         <nav class="navbar">
@@ -36,14 +34,20 @@
                         <span class="brand-sub">Open Cloud Asset Upload</span>
                     </div>
                 </div>
-                <div class="nav-status">
-                    <span class="status-indicator"></span>
-                    <span>Ready</span>
+                <div class="nav-right">
+                    <button class="nav-help-btn" onclick="openHelp()" type="button">
+                        <i class="fas fa-question"></i>
+                        <span>Help</span>
+                    </button>
+                    <div class="nav-status">
+                        <span class="status-indicator"></span>
+                        <span>Ready</span>
+                    </div>
                 </div>
             </div>
         </nav>
 
-        <!-- Progress Steps -->
+        <!-- Stepper -->
         <div class="stepper">
             <div class="stepper-inner">
                 <div class="stepper-track">
@@ -68,7 +72,7 @@
             </div>
         </div>
 
-        <!-- Panels Container -->
+        <!-- Panels -->
         <div class="panel-container">
 
             <!-- Panel 1: API Setup -->
@@ -87,10 +91,7 @@
                         </div>
 
                         <div class="field">
-                            <label>
-                                <i class="fas fa-key"></i>
-                                API Key
-                            </label>
+                            <label><i class="fas fa-key"></i> API Key</label>
                             <div class="input-glass">
                                 <input type="password" id="apiKey" placeholder="Enter your Open Cloud API Key" spellcheck="false">
                                 <button class="input-action" onclick="toggleVis('apiKey',this)" type="button">
@@ -99,15 +100,12 @@
                             </div>
                             <div class="field-hint">
                                 <i class="fas fa-circle-info"></i>
-                                Get key at <a href="https://create.roblox.com/credentials" target="_blank" rel="noopener">create.roblox.com/credentials</a>
+                                Get key at <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com/dashboard/credentials</a>
                             </div>
                         </div>
 
                         <div class="field">
-                            <label>
-                                <i class="fas fa-id-badge"></i>
-                                Creator ID
-                            </label>
+                            <label><i class="fas fa-id-badge"></i> Creator ID</label>
                             <div class="input-glass">
                                 <input type="text" id="creatorId" placeholder="Your Roblox User ID or Group ID" spellcheck="false">
                             </div>
@@ -115,10 +113,7 @@
 
                         <div class="field-row">
                             <div class="field">
-                                <label>
-                                    <i class="fas fa-user-tag"></i>
-                                    Creator Type
-                                </label>
+                                <label><i class="fas fa-user-tag"></i> Creator Type</label>
                                 <div class="select-glass">
                                     <select id="creatorType">
                                         <option value="User">User</option>
@@ -128,10 +123,7 @@
                                 </div>
                             </div>
                             <div class="field">
-                                <label>
-                                    <i class="fas fa-shapes"></i>
-                                    Asset Type
-                                </label>
+                                <label><i class="fas fa-shapes"></i> Asset Type</label>
                                 <div class="select-glass">
                                     <select id="assetType">
                                         <option value="Model">Model</option>
@@ -144,8 +136,7 @@
                         </div>
 
                         <button class="btn btn-primary" onclick="nextStep(2)">
-                            Continue
-                            <i class="fas fa-arrow-right"></i>
+                            Continue <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
                 </div>
@@ -185,9 +176,7 @@
                         </div>
 
                         <div class="file-preview" id="filePreview">
-                            <div class="file-preview-icon">
-                                <i class="fas fa-cube"></i>
-                            </div>
+                            <div class="file-preview-icon"><i class="fas fa-cube"></i></div>
                             <div class="file-preview-info">
                                 <span class="fp-name" id="fpName">-</span>
                                 <span class="fp-size" id="fpSize">-</span>
@@ -198,21 +187,14 @@
                         </div>
 
                         <div class="field">
-                            <label>
-                                <i class="fas fa-pencil"></i>
-                                Asset Name
-                            </label>
+                            <label><i class="fas fa-pencil"></i> Asset Name</label>
                             <div class="input-glass">
                                 <input type="text" id="assetName" placeholder="Display name on Roblox">
                             </div>
                         </div>
 
                         <div class="field">
-                            <label>
-                                <i class="fas fa-align-left"></i>
-                                Description
-                                <span class="optional">optional</span>
-                            </label>
+                            <label><i class="fas fa-align-left"></i> Description <span class="optional">optional</span></label>
                             <div class="input-glass">
                                 <textarea id="assetDesc" placeholder="Asset description..." rows="2"></textarea>
                             </div>
@@ -220,12 +202,10 @@
 
                         <div class="btn-row">
                             <button class="btn btn-ghost" onclick="nextStep(1)">
-                                <i class="fas fa-arrow-left"></i>
-                                Back
+                                <i class="fas fa-arrow-left"></i> Back
                             </button>
                             <button class="btn btn-primary" onclick="nextStep(3)">
-                                Upload & Convert
-                                <i class="fas fa-wand-magic-sparkles"></i>
+                                Upload & Convert <i class="fas fa-wand-magic-sparkles"></i>
                             </button>
                         </div>
                     </div>
@@ -267,8 +247,7 @@
                         </div>
 
                         <button class="btn btn-ghost" id="retryBtn" style="display:none" onclick="nextStep(2)">
-                            <i class="fas fa-arrow-left"></i>
-                            Go Back & Retry
+                            <i class="fas fa-arrow-left"></i> Go Back & Retry
                         </button>
                     </div>
                 </div>
@@ -304,8 +283,7 @@
                             <span class="result-label">Library Link</span>
                             <div class="result-value-row">
                                 <a class="result-link" id="resLink" href="#" target="_blank" rel="noopener">
-                                    Open in Roblox
-                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                    Open in Roblox <i class="fas fa-arrow-up-right-from-square"></i>
                                 </a>
                                 <button class="copy-btn" onclick="copyLink()" type="button">
                                     <i class="far fa-copy"></i>
@@ -339,19 +317,341 @@
                         </div>
 
                         <button class="btn btn-primary" onclick="resetApp()">
-                            <i class="fas fa-plus"></i>
-                            Convert Another
+                            <i class="fas fa-plus"></i> Convert Another
                         </button>
                     </div>
                 </div>
             </section>
         </div>
+
+        <!-- ===== HELP SECTION (In-page UI) ===== -->
+        <section class="help-section" id="helpSection">
+            <div class="card">
+                <div class="card-glow help-glow"></div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <div class="header-icon help-icon-header">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div>
+                            <h2>Help Guide</h2>
+                            <p>Step-by-step tutorial for beginners</p>
+                        </div>
+                        <button class="help-close-btn" onclick="closeHelp()" type="button">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- Help Tabs -->
+                    <div class="help-tabs" id="helpTabs">
+                        <button class="help-tab active" onclick="switchTab(0,this)" type="button">
+                            <i class="fas fa-key"></i>
+                            <span>API Key</span>
+                        </button>
+                        <button class="help-tab" onclick="switchTab(1,this)" type="button">
+                            <i class="fas fa-id-badge"></i>
+                            <span>User ID</span>
+                        </button>
+                        <button class="help-tab" onclick="switchTab(2,this)" type="button">
+                            <i class="fas fa-file-export"></i>
+                            <span>RBXM File</span>
+                        </button>
+                        <button class="help-tab" onclick="switchTab(3,this)" type="button">
+                            <i class="fas fa-circle-question"></i>
+                            <span>FAQ</span>
+                        </button>
+                    </div>
+
+                    <!-- Tab Panels -->
+                    <div class="help-panels">
+
+                        <!-- Tab 0: API Key -->
+                        <div class="help-panel active" data-tab="0">
+                            <div class="guide-title">
+                                <span class="guide-badge purple">Guide</span>
+                                How to Get Your API Key
+                            </div>
+                            <div class="guide-steps">
+                                <div class="guide-step">
+                                    <div class="step-num">1</div>
+                                    <div class="step-body">
+                                        <h4>Open Creator Dashboard</h4>
+                                        <p>Go to the Roblox credentials page to create a new API key.</p>
+                                        <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener" class="guide-link">
+                                            <i class="fas fa-arrow-up-right-from-square"></i>
+                                            create.roblox.com/dashboard/credentials
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">2</div>
+                                    <div class="step-body">
+                                        <h4>Click "CREATE API KEY"</h4>
+                                        <p>Blue button at the top right of the page. Click it to start.</p>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">3</div>
+                                    <div class="step-body">
+                                        <h4>Name Your Key</h4>
+                                        <p>Give it a recognizable name like <code>RBXM Converter</code>.</p>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">4</div>
+                                    <div class="step-body">
+                                        <h4>Add Permission: Assets API</h4>
+                                        <p>Under <strong>Access Permissions</strong> → click <strong>Add API System</strong> → select <strong>Assets</strong>.</p>
+                                        <div class="guide-note warn">
+                                            <i class="fas fa-triangle-exclamation"></i>
+                                            <span>Enable both <strong>Read</strong> and <strong>Write</strong> permissions!</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">5</div>
+                                    <div class="step-body">
+                                        <h4>Set Accepted IP Addresses</h4>
+                                        <p>For testing, allow all IPs:</p>
+                                        <div class="guide-code-block">
+                                            <code>0.0.0.0/0</code>
+                                            <button class="guide-copy" onclick="guideCopy('0.0.0.0/0',this)" type="button">
+                                                <i class="far fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="guide-step last">
+                                    <div class="step-num">6</div>
+                                    <div class="step-body">
+                                        <h4>Save & Copy Your Key</h4>
+                                        <p>Click <strong>SAVE & GENERATE KEY</strong>. The key shows <strong>only once</strong> — copy it immediately!</p>
+                                        <div class="guide-note danger">
+                                            <i class="fas fa-lock"></i>
+                                            <span>Never share your API key. It gives full upload access to your account.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 1: User ID -->
+                        <div class="help-panel" data-tab="1">
+                            <div class="guide-title">
+                                <span class="guide-badge blue">Guide</span>
+                                How to Find Your User ID
+                            </div>
+                            <div class="guide-steps">
+                                <div class="guide-step">
+                                    <div class="step-num">1</div>
+                                    <div class="step-body">
+                                        <h4>Open Your Roblox Profile</h4>
+                                        <p>Go to roblox.com and click your username.</p>
+                                        <a href="https://www.roblox.com/home" target="_blank" rel="noopener" class="guide-link">
+                                            <i class="fas fa-arrow-up-right-from-square"></i>
+                                            roblox.com/home
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">2</div>
+                                    <div class="step-body">
+                                        <h4>Check the URL</h4>
+                                        <p>Your profile URL contains your User ID:</p>
+                                        <div class="guide-code-block">
+                                            <code>roblox.com/users/<strong>123456789</strong>/profile</code>
+                                        </div>
+                                        <p class="mt-8">The number <strong>123456789</strong> is your User ID.</p>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">3</div>
+                                    <div class="step-body">
+                                        <h4>Alternative: Roblox Studio</h4>
+                                        <p>Open Studio → <strong>File → Settings</strong> → your ID is shown there.</p>
+                                    </div>
+                                </div>
+                                <div class="guide-step last">
+                                    <div class="step-num emoji">💡</div>
+                                    <div class="step-body">
+                                        <h4>For Group Uploads</h4>
+                                        <p>If uploading to a Group:</p>
+                                        <ol class="guide-list">
+                                            <li>Go to your group page on Roblox</li>
+                                            <li>URL: <code>roblox.com/groups/<strong>7654321</strong>/...</code></li>
+                                            <li>Use that number as Creator ID</li>
+                                            <li>Set Creator Type to <strong>Group</strong></li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: RBXM File -->
+                        <div class="help-panel" data-tab="2">
+                            <div class="guide-title">
+                                <span class="guide-badge green">Guide</span>
+                                How to Get a .rbxm File
+                            </div>
+                            <div class="guide-steps">
+                                <div class="guide-step">
+                                    <div class="step-num">1</div>
+                                    <div class="step-body">
+                                        <h4>Open Roblox Studio</h4>
+                                        <p>Launch Studio and open the place with your model.</p>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">2</div>
+                                    <div class="step-body">
+                                        <h4>Select Your Model</h4>
+                                        <p>In <strong>Explorer</strong>, click the model you want to export.</p>
+                                        <div class="guide-note info">
+                                            <i class="fas fa-lightbulb"></i>
+                                            <span>Hold <strong>Ctrl</strong> to select multiple objects.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">3</div>
+                                    <div class="step-body">
+                                        <h4>Right Click → "Save to File..."</h4>
+                                        <p>Right-click the object in Explorer and choose <strong>Save to File</strong>.</p>
+                                    </div>
+                                </div>
+                                <div class="guide-step">
+                                    <div class="step-num">4</div>
+                                    <div class="step-body">
+                                        <h4>Save as .rbxm</h4>
+                                        <p>Set file format to:</p>
+                                        <div class="guide-code-block">
+                                            <code>Roblox Model (*.rbxm)</code>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="guide-step last">
+                                    <div class="step-num emoji">📝</div>
+                                    <div class="step-body">
+                                        <h4>.rbxm vs .rbxmx</h4>
+                                        <div class="compare-grid">
+                                            <div class="compare-item">
+                                                <span class="compare-ext">.rbxm</span>
+                                                <span>Binary — smaller, faster ✅</span>
+                                            </div>
+                                            <div class="compare-item">
+                                                <span class="compare-ext">.rbxmx</span>
+                                                <span>XML — readable, larger file</span>
+                                            </div>
+                                        </div>
+                                        <p class="mt-8">Both work. <strong>.rbxm is recommended.</strong></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: FAQ -->
+                        <div class="help-panel" data-tab="3">
+                            <div class="guide-title">
+                                <span class="guide-badge orange">FAQ</span>
+                                Frequently Asked Questions
+                            </div>
+                            <div class="faq-list">
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>What does this tool do?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p>Uploads your .rbxm file to Roblox via Open Cloud API and returns an <strong>Asset ID</strong>. Use that ID in Toolbox or scripts.</p>
+                                    </div>
+                                </div>
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>Is my API key safe?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p>Your key is sent directly to Roblox (or local proxy). It's <strong>never stored</strong>. Keep it private.</p>
+                                    </div>
+                                </div>
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>Why "HTTP 401 Unauthorized"?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p>Invalid API key. Check:</p>
+                                        <ul>
+                                            <li>Full key copied correctly</li>
+                                            <li>Has <strong>Assets Read + Write</strong> permission</li>
+                                            <li>IP allowed (<code>0.0.0.0/0</code> for testing)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>Why "HTTP 403 Forbidden"?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p>Wrong Creator ID, no group permission, or wrong API permissions.</p>
+                                    </div>
+                                </div>
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>Do I need server.js (backend)?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p><strong>Yes.</strong> Roblox blocks browser requests (CORS). Run:</p>
+                                        <div class="guide-code-block" style="margin-top:8px">
+                                            <code>npm install && npm start</code>
+                                            <button class="guide-copy" onclick="event.stopPropagation();guideCopy('npm install && npm start',this)" type="button">
+                                                <i class="far fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>Max file size?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p>Up to <strong>50 MB</strong>.</p>
+                                    </div>
+                                </div>
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>Can I upload Decals / Audio?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p><strong>Yes!</strong> Change Asset Type in Step 1. Use .png for Decals, .mp3 for Audio.</p>
+                                    </div>
+                                </div>
+                                <div class="faq-item" onclick="toggleFaq(this)">
+                                    <div class="faq-q">
+                                        <span>How to use Asset ID in my game?</span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </div>
+                                    <div class="faq-a">
+                                        <p>Use this in a Script:</p>
+                                        <div class="guide-code-block" style="margin-top:8px">
+                                            <code>game:GetService("InsertService"):LoadAsset(ID).Parent = workspace</code>
+                                        </div>
+                                        <p class="mt-8">Or search the ID in <strong>Toolbox</strong> inside Roblox Studio.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
-    <!-- Toast Container -->
     <div id="toasts"></div>
-
-    <!-- Confetti -->
     <canvas id="confetti"></canvas>
 
     <script src="script.js"></script>
