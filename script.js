@@ -1,604 +1,550 @@
-// ============================================
-// RBXM to Roblox Asset ID Converter
-// Full Working Implementation
-// ============================================
+// =============================================
+// RBXM → Asset ID Converter | Premium Edition
+// =============================================
 
-// --- Galaxy Background Effects ---
-function initGalaxy() {
+// =================== GALAXY CANVAS ===================
+(function initGalaxy() {
+    const c = document.getElementById('galaxyCanvas');
+    const ctx = c.getContext('2d');
+    let w, h, stars = [], mouse = { x: -1000, y: -1000 };
+
+    function resize() {
+        w = c.width = window.innerWidth;
+        h = c.height = window.innerHeight;
+    }
+
+    function createStars() {
+        stars = [];
+        const count = Math.min(Math.floor((w * h) / 4000), 350);
+        for (let i = 0; i < count; i++) {
+            stars.push({
+                x: Math.random() * w,
+                y: Math.random() * h,
+                r: Math.random() * 1.4 + 0.3,
+                baseAlpha: Math.random() * 0.6 + 0.2,
+                alpha: 0,
+                speed: Math.random() * 0.0015 + 0.0008,
+                phase: Math.random() * Math.PI * 2,
+                drift: (Math.random() - 0.5) * 0.08,
+            });
+        }
+    }
+
+    function draw(t) {
+        ctx.clearRect(0, 0, w, h);
+        stars.forEach(s => {
+            s.alpha = s.baseAlpha + Math.sin(t * s.speed + s.phase) * 0.3;
+            s.y += s.drift;
+            if (s.y > h + 5) { s.y = -5; s.x = Math.random() * w; }
+            if (s.y < -5) { s.y = h + 5; s.x = Math.random() * w; }
+
+            // Mouse proximity glow
+            const dx = s.x - mouse.x;
+            const dy = s.y - mouse.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const glow = dist < 150 ? (1 - dist / 150) * 0.6 : 0;
+
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.r + glow * 2, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(210,180,255,${Math.max(0, Math.min(1, s.alpha + glow))})`;
+            ctx.fill();
+
+            if (glow > 0.1) {
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r + glow * 6, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(168,85,247,${glow * 0.2})`;
+                ctx.fill();
+            }
+        });
+        requestAnimationFrame(draw);
+    }
+
+    resize();
     createStars();
-    createShootingStars();
-    createFloatingOrbs();
-}
+    requestAnimationFrame(draw);
 
-function createStars() {
-    const container = document.getElementById('stars');
-    const count = window.innerWidth < 600 ? 100 : 200;
-    for (let i = 0; i < count; i++) {
-        const star = document.createElement('div');
-        star.className = 'star';
-        const size = Math.random() * 2.5 + 0.5;
-        star.style.cssText = `
-            width: ${size}px;
-            height: ${size}px;
-            left: ${Math.random() * 100}%;
-            top: ${Math.random() * 100}%;
-            --duration: ${Math.random() * 3 + 2}s;
-            --delay: ${Math.random() * 5}s;
-            --min-opacity: ${Math.random() * 0.3 + 0.1};
-        `;
-        container.appendChild(star);
-    }
-}
+    window.addEventListener('resize', () => { resize(); createStars(); });
+    document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    document.addEventListener('mouseleave', () => { mouse.x = -1000; mouse.y = -1000; });
+})();
 
-function createShootingStars() {
-    const container = document.getElementById('shootingStars');
-    for (let i = 0; i < 5; i++) {
-        const star = document.createElement('div');
-        star.className = 'shooting-star';
-        star.style.cssText = `
-            left: ${Math.random() * 100 + 20}%;
-            top: ${Math.random() * 40}%;
-            --duration: ${Math.random() * 4 + 6}s;
-            --delay: ${Math.random() * 15}s;
-        `;
-        container.appendChild(star);
-    }
-}
-
-function createFloatingOrbs() {
-    const container = document.getElementById('floatingOrbs');
-    const colors = [
-        'rgba(168, 85, 247, 0.3)',
-        'rgba(139, 92, 246, 0.25)',
-        'rgba(59, 130, 246, 0.2)',
-        'rgba(236, 72, 153, 0.2)',
-        'rgba(16, 185, 129, 0.15)',
-    ];
-    for (let i = 0; i < 8; i++) {
-        const orb = document.createElement('div');
-        orb.className = 'floating-orb';
-        const size = Math.random() * 6 + 3;
-        orb.style.cssText = `
-            width: ${size}px;
-            height: ${size}px;
-            left: ${Math.random() * 100}%;
-            top: ${Math.random() * 100}%;
-            --color: ${colors[Math.floor(Math.random() * colors.length)]};
-            --duration: ${Math.random() * 4 + 3}s;
-            --delay: ${Math.random() * 5}s;
-        `;
-        container.appendChild(orb);
-    }
-}
-
-// --- Dropzone Hover Effect ---
-function initDropzoneEffect() {
-    const dropzone = document.getElementById('dropzone');
-    if (!dropzone) return;
-
-    dropzone.addEventListener('mousemove', (e) => {
-        const rect = dropzone.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-        const effect = dropzone.querySelector('.dropzone-hover-effect');
-        if (effect) {
-            effect.style.setProperty('--x', x + '%');
-            effect.style.setProperty('--y', y + '%');
-        }
-    });
-}
-
-// --- State ---
+// =================== STATE ===================
 let currentStep = 1;
-let selectedFile = null;
+let uploadedFile = null;
 
-// --- Step Navigation ---
-function goToStep(step) {
-    // Validation
+// =================== NAVIGATION ===================
+function nextStep(step) {
+    // Validate before moving forward
     if (step === 2 && currentStep === 1) {
-        const apiKey = document.getElementById('apiKey').value.trim();
-        const creatorId = document.getElementById('creatorId').value.trim();
-        if (!apiKey) {
-            showToast('Please enter your API Key', 'error');
-            shakeElement(document.getElementById('apiKey').closest('.glass-input'));
-            return;
-        }
-        if (!creatorId) {
-            showToast('Please enter your Creator ID', 'error');
-            shakeElement(document.getElementById('creatorId').closest('.glass-input'));
-            return;
-        }
+        if (!validate('apiKey', 'API Key is required') || !validate('creatorId', 'Creator ID is required')) return;
     }
 
     if (step === 3 && currentStep === 2) {
-        if (!selectedFile) {
-            showToast('Please select a RBXM file', 'error');
-            shakeElement(document.getElementById('dropzone'));
+        if (!uploadedFile) {
+            toast('Please select a file first', 'error');
+            shake(document.getElementById('dropArea'));
             return;
         }
-        const assetName = document.getElementById('assetName').value.trim();
-        if (!assetName) {
-            showToast('Please enter an asset name', 'error');
-            shakeElement(document.getElementById('assetName').closest('.glass-input'));
-            return;
-        }
-        // Start conversion
-        startConversion();
+        if (!validate('assetName', 'Asset name is required')) return;
+        startUpload();
+        return;
     }
 
-    if (step <= 3) {
-        updateStepUI(step);
-        showPanel(step);
-        currentStep = step;
-    }
+    currentStep = step;
+    updateStepper(step);
+    showPanel(step);
 }
 
-function updateStepUI(step) {
-    const steps = document.querySelectorAll('.step');
-    const lines = document.querySelectorAll('.step-line');
+function validate(id, msg) {
+    const el = document.getElementById(id);
+    if (!el.value.trim()) {
+        toast(msg, 'error');
+        shake(el.closest('.input-glass, .drop-area'));
+        el.focus();
+        return false;
+    }
+    return true;
+}
 
-    steps.forEach((s, i) => {
-        const stepNum = i + 1;
-        s.classList.remove('active', 'completed');
-        if (stepNum < step) s.classList.add('completed');
-        if (stepNum === step) s.classList.add('active');
-    });
+function shake(el) {
+    if (!el) return;
+    el.classList.remove('shake');
+    void el.offsetWidth;
+    el.classList.add('shake');
+    setTimeout(() => el.classList.remove('shake'), 600);
+}
 
-    lines.forEach((line, i) => {
-        line.classList.toggle('filled', i < step - 1);
+function updateStepper(step) {
+    const nodes = document.querySelectorAll('.step-node');
+    const fill = document.getElementById('stepperFill');
+    const pct = ((step - 1) / (nodes.length - 1)) * 100;
+    fill.style.width = pct + '%';
+
+    nodes.forEach(n => {
+        const s = +n.dataset.step;
+        n.classList.remove('active', 'done');
+        if (s < step) n.classList.add('done');
+        if (s === step) n.classList.add('active');
     });
 }
 
 function showPanel(step) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    const panel = document.getElementById('panel' + step);
+    const panel = document.getElementById('panel-' + step);
     if (panel) {
         panel.classList.add('active');
-        // Re-trigger animation
         panel.style.animation = 'none';
-        panel.offsetHeight;
+        void panel.offsetWidth;
         panel.style.animation = '';
     }
 }
 
-// --- File Handling ---
-function initFileHandlers() {
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('fileInput');
+// =================== FILE HANDLING ===================
+(function initDrop() {
+    const area = document.getElementById('dropArea');
+    const input = document.getElementById('fileInput');
 
-    dropzone.addEventListener('click', () => fileInput.click());
+    area.addEventListener('click', () => input.click());
 
-    dropzone.addEventListener('dragover', (e) => {
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+    area.addEventListener('drop', e => {
         e.preventDefault();
-        dropzone.classList.add('drag-over');
+        area.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
     });
 
-    dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('drag-over');
+    input.addEventListener('change', e => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
     });
-
-    dropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('drag-over');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) handleFile(files[0]);
-    });
-
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) handleFile(e.target.files[0]);
-    });
-}
+})();
 
 function handleFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['rbxm', 'rbxmx'].includes(ext)) {
-        showToast('Please select a .rbxm or .rbxmx file', 'error');
+        toast('Only .rbxm and .rbxmx files are supported', 'error');
         return;
     }
 
-    selectedFile = file;
+    uploadedFile = file;
 
-    // Update UI
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileSize').textContent = formatFileSize(file.size);
-    document.getElementById('fileInfo').style.display = 'flex';
-    document.getElementById('dropzone').style.display = 'none';
+    document.getElementById('fpName').textContent = file.name;
+    document.getElementById('fpSize').textContent = fmtSize(file.size);
+    document.getElementById('filePreview').classList.add('show');
+    document.getElementById('dropArea').style.display = 'none';
 
-    // Auto-fill asset name
     const nameInput = document.getElementById('assetName');
-    if (!nameInput.value) {
-        nameInput.value = file.name.replace(/\.(rbxm|rbxmx)$/i, '');
-    }
+    if (!nameInput.value) nameInput.value = file.name.replace(/\.(rbxm|rbxmx)$/i, '');
 
-    showToast('File loaded: ' + file.name, 'success');
+    toast('File loaded: ' + file.name, 'success');
 }
 
-function removeFile() {
-    selectedFile = null;
+function clearFile() {
+    uploadedFile = null;
     document.getElementById('fileInput').value = '';
-    document.getElementById('fileInfo').style.display = 'none';
-    document.getElementById('dropzone').style.display = 'block';
+    document.getElementById('filePreview').classList.remove('show');
+    document.getElementById('dropArea').style.display = '';
 }
 
-function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+function fmtSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(2) + ' MB';
 }
 
-// --- Conversion Process ---
-async function startConversion() {
+// =================== UPLOAD / CONVERT ===================
+async function startUpload() {
     currentStep = 3;
-    updateStepUI(3);
+    updateStepper(3);
     showPanel(3);
 
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const progressPercent = document.getElementById('progressPercent');
-    const logContent = document.getElementById('logContent');
+    const fill = document.getElementById('progressFill');
+    const glow = document.getElementById('progressGlow');
+    const label = document.getElementById('progressLabel');
+    const pct = document.getElementById('progressPct');
+    const list = document.getElementById('logList');
+    const retryBtn = document.getElementById('retryBtn');
 
     // Reset
-    progressBar.style.width = '0%';
-    logContent.innerHTML = '';
+    fill.style.width = '0%';
+    glow.style.opacity = '0';
+    list.innerHTML = '';
+    retryBtn.style.display = 'none';
+    document.getElementById('convertTitle').textContent = 'Converting...';
+    document.getElementById('convertSub').textContent = 'Uploading asset to Roblox';
 
-    const apiKey = document.getElementById('apiKey').value.trim();
-    const creatorId = document.getElementById('creatorId').value.trim();
-    const creatorType = document.getElementById('creatorType').value;
-    const assetType = document.getElementById('assetType').value;
-    const assetName = document.getElementById('assetName').value.trim();
-    const assetDescription = document.getElementById('assetDescription').value.trim();
-
-    // Step 1: Preparing
-    addLog('Initializing upload process...', 'info');
-    await animateProgress(0, 10, 'Preparing file...');
-
-    addLog(`File: ${selectedFile.name} (${formatFileSize(selectedFile.size)})`, 'info');
-    await animateProgress(10, 20, 'Reading file data...');
-
-    // Step 2: Reading file
-    addLog('Reading RBXM binary data...', 'info');
-    let fileBuffer;
-    try {
-        fileBuffer = await readFileAsArrayBuffer(selectedFile);
-        addLog('File data loaded successfully', 'success');
-    } catch (err) {
-        addLog('Error reading file: ' + err.message, 'error');
-        showToast('Error reading file', 'error');
-        return;
-    }
-    await animateProgress(20, 40, 'File data loaded...');
-
-    // Step 3: Upload to Roblox via Open Cloud API
-    addLog('Connecting to Roblox Open Cloud API...', 'info');
-    await animateProgress(40, 50, 'Connecting to Roblox...');
-
-    addLog(`Creator: ${creatorType} (${creatorId})`, 'info');
-    addLog(`Asset type: ${assetType}`, 'info');
-    addLog(`Asset name: ${assetName}`, 'info');
-    await animateProgress(50, 60, 'Uploading asset...');
+    const apiKey = v('apiKey');
+    const creatorId = v('creatorId');
+    const creatorType = v('creatorType');
+    const assetType = v('assetType');
+    const assetName = v('assetName');
+    const assetDesc = v('assetDesc');
 
     try {
-        addLog('Sending asset to Roblox servers...', 'info');
-        const result = await uploadToRoblox({
-            apiKey,
-            creatorId,
-            creatorType,
-            assetType,
-            assetName,
-            assetDescription,
-            fileBuffer,
-            fileName: selectedFile.name
+        log('Initializing upload process...');
+        await prog(0, 10, fill, glow, pct, label, 'Preparing...');
+
+        log(`File: ${uploadedFile.name} (${fmtSize(uploadedFile.size)})`);
+        await prog(10, 20, fill, glow, pct, label, 'Reading file...');
+
+        log('Reading binary data...');
+        const buf = await readFile(uploadedFile);
+        log('File data loaded ✓', 'ok');
+        await prog(20, 35, fill, glow, pct, label, 'File ready');
+
+        log('Connecting to Roblox Open Cloud API...');
+        await prog(35, 45, fill, glow, pct, label, 'Connecting...');
+
+        log(`Creator: ${creatorType} (${creatorId})`);
+        log(`Asset: ${assetName} [${assetType}]`);
+        await prog(45, 55, fill, glow, pct, label, 'Uploading...');
+
+        log('Sending asset to Roblox...');
+        const result = await apiUpload({
+            apiKey, creatorId, creatorType, assetType, assetName, assetDesc, buf, fileName: uploadedFile.name
         });
 
-        await animateProgress(60, 80, 'Processing on Roblox...');
-        addLog('Asset uploaded, waiting for processing...', 'info');
+        await prog(55, 75, fill, glow, pct, label, 'Processing...');
+        log('Upload received by Roblox ✓', 'ok');
 
-        // Poll for operation result if needed
         let assetId = result.assetId;
-        let operationPath = result.operationPath;
+        let opPath = result.opPath;
 
-        if (operationPath && !assetId) {
-            addLog('Polling operation status...', 'info');
-            assetId = await pollOperation(apiKey, operationPath);
+        if (opPath && !assetId) {
+            log('Waiting for Roblox to process asset...');
+            assetId = await pollOp(apiKey, opPath);
         }
 
-        await animateProgress(80, 100, 'Complete!');
-        addLog(`Asset ID: ${assetId}`, 'success');
-        addLog('Conversion completed successfully!', 'success');
+        await prog(75, 100, fill, glow, pct, label, 'Complete!');
+        log(`Asset ID: ${assetId}`, 'ok');
+        log('Done! 🎉', 'ok');
 
-        // Show result
-        setTimeout(() => {
-            showResult(assetId, assetName, assetType);
-        }, 600);
+        setTimeout(() => showResult(assetId, assetName, assetType), 500);
 
     } catch (err) {
-        addLog('Upload failed: ' + err.message, 'error');
-        progressText.textContent = 'Upload failed';
-        showToast('Upload failed: ' + err.message, 'error');
-
-        // Show retry option
-        setTimeout(() => {
-            addLog('You can go back and try again.', 'warning');
-            const retryBtn = document.createElement('button');
-            retryBtn.className = 'glass-button secondary';
-            retryBtn.innerHTML = '<i class="fas fa-arrow-left"></i> <span>Go Back</span>';
-            retryBtn.style.marginTop = '16px';
-            retryBtn.onclick = () => goToStep(2);
-            logContent.parentElement.after(retryBtn);
-        }, 500);
+        log('Error: ' + err.message, 'err');
+        label.textContent = 'Upload failed';
+        document.getElementById('convertTitle').textContent = 'Upload Failed';
+        document.getElementById('convertSub').textContent = err.message;
+        retryBtn.style.display = '';
+        toast('Upload failed: ' + err.message, 'error');
     }
 }
 
-function readFileAsArrayBuffer(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsArrayBuffer(file);
+function v(id) { return document.getElementById(id).value.trim(); }
+
+function readFile(file) {
+    return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = () => rej(r.error);
+        r.readAsArrayBuffer(file);
     });
 }
 
-async function uploadToRoblox({ apiKey, creatorId, creatorType, assetType, assetName, assetDescription, fileBuffer, fileName }) {
-    // Roblox Open Cloud Assets API
-    // POST https://apis.roblox.com/assets/v1/assets
+async function apiUpload({ apiKey, creatorId, creatorType, assetType, assetName, assetDesc, buf, fileName }) {
+    const PROXY = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        ? 'http://localhost:3000/api/upload' : '/api/upload';
 
-    const assetTypeMap = {
-        'Model': 'Model',
-        'Decal': 'Decal',
-        'Audio': 'Audio',
-    };
+    const fd = new FormData();
+    fd.append('apiKey', apiKey);
+    fd.append('creatorId', creatorId);
+    fd.append('creatorType', creatorType);
+    fd.append('assetType', assetType);
+    fd.append('assetName', assetName);
+    fd.append('assetDescription', assetDesc || '');
+    fd.append('file', new Blob([buf]), fileName);
 
-    const contentTypeMap = {
-        'Model': 'application/octet-stream',
-        'Decal': 'image/png',
-        'Audio': 'audio/mpeg',
-    };
-
-    // Build multipart form data
-    const boundary = '----RBXMConverter' + Date.now();
-
-    const requestJson = JSON.stringify({
-        assetType: assetTypeMap[assetType],
-        displayName: assetName,
-        description: assetDescription || assetName,
-        creationContext: {
-            creator: {
-                userId: creatorType === 'User' ? creatorId : undefined,
-                groupId: creatorType === 'Group' ? creatorId : undefined,
-            }
-        }
-    });
-
-    // Build multipart body manually
-    const encoder = new TextEncoder();
-
-    const parts = [];
-
-    // Part 1: request JSON
-    parts.push(encoder.encode(
-        `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="request"\r\n` +
-        `Content-Type: application/json\r\n\r\n` +
-        requestJson + '\r\n'
-    ));
-
-    // Part 2: file content
-    const fileHeader = encoder.encode(
-        `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="fileContent"; filename="${fileName}"\r\n` +
-        `Content-Type: ${contentTypeMap[assetType] || 'application/octet-stream'}\r\n\r\n`
-    );
-    parts.push(fileHeader);
-    parts.push(new Uint8Array(fileBuffer));
-    parts.push(encoder.encode('\r\n'));
-
-    // End boundary
-    parts.push(encoder.encode(`--${boundary}--\r\n`));
-
-    // Combine all parts
-    let totalLength = 0;
-    parts.forEach(p => totalLength += p.byteLength);
-
-    const body = new Uint8Array(totalLength);
-    let offset = 0;
-    parts.forEach(p => {
-        body.set(new Uint8Array(p.buffer || p), offset);
-        offset += p.byteLength;
-    });
-
-    // Try direct API call (will work if CORS is not blocked)
-    // For production, use a backend proxy
-    const PROXY_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:3000/api/upload'
-        : '/api/upload';
-
-    // Try backend first, fallback to direct (for demo)
-    let response;
+    let resp;
     try {
-        // Try via backend proxy
-        const formData = new FormData();
-        formData.append('apiKey', apiKey);
-        formData.append('creatorId', creatorId);
-        formData.append('creatorType', creatorType);
-        formData.append('assetType', assetType);
-        formData.append('assetName', assetName);
-        formData.append('assetDescription', assetDescription || '');
-        formData.append('file', new Blob([fileBuffer]), fileName);
-
-        response = await fetch(PROXY_URL, {
-            method: 'POST',
-            body: formData
+        resp = await fetch(PROXY, { method: 'POST', body: fd });
+    } catch (e) {
+        // Direct fallback
+        const boundary = '----B' + Date.now();
+        const enc = new TextEncoder();
+        const reqJson = JSON.stringify({
+            assetType,
+            displayName: assetName,
+            description: assetDesc || assetName,
+            creationContext: {
+                creator: creatorType === 'Group'
+                    ? { groupId: creatorId }
+                    : { userId: creatorId }
+            }
         });
-    } catch (proxyErr) {
-        // Fallback: direct API call (may fail due to CORS)
-        console.log('Backend proxy not available, trying direct API...');
-        response = await fetch('https://apis.roblox.com/assets/v1/assets', {
+
+        const parts = [
+            enc.encode(`--${boundary}\r\nContent-Disposition: form-data; name="request"\r\nContent-Type: application/json\r\n\r\n${reqJson}\r\n`),
+            enc.encode(`--${boundary}\r\nContent-Disposition: form-data; name="fileContent"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+            new Uint8Array(buf),
+            enc.encode(`\r\n--${boundary}--\r\n`)
+        ];
+
+        let total = 0;
+        parts.forEach(p => total += p.byteLength);
+        const body = new Uint8Array(total);
+        let off = 0;
+        parts.forEach(p => { body.set(p instanceof Uint8Array ? p : new Uint8Array(p), off); off += p.byteLength; });
+
+        resp = await fetch('https://apis.roblox.com/assets/v1/assets', {
             method: 'POST',
             headers: {
                 'x-api-key': apiKey,
-                'Content-Type': `multipart/form-data; boundary=${boundary}`,
+                'Content-Type': `multipart/form-data; boundary=${boundary}`
             },
             body: body
         });
     }
 
-    if (!response.ok) {
-        let errorMsg = `HTTP ${response.status}`;
-        try {
-            const errData = await response.json();
-            errorMsg = errData.message || errData.error || JSON.stringify(errData);
-        } catch (e) {
-            try {
-                errorMsg = await response.text();
-            } catch (e2) { /* ignore */ }
+    if (!resp.ok) {
+        let msg = `HTTP ${resp.status}`;
+        try { const d = await resp.json(); msg = d.message || d.error || JSON.stringify(d); } catch (e) {
+            try { msg = await resp.text(); } catch (e2) {}
         }
-        throw new Error(errorMsg);
+        throw new Error(msg);
     }
 
-    const data = await response.json();
-
-    // The response contains an operation object
-    // { "path": "operations/xxx", "done": false/true, "response": { ... } }
+    const data = await resp.json();
     if (data.done && data.response) {
-        const assetId = data.response.assetId ||
-                        (data.response.path && data.response.path.split('/').pop());
-        return { assetId, operationPath: null };
+        return { assetId: data.response.assetId || data.response.path?.split('/').pop(), opPath: null };
     }
-
-    // Need to poll
-    return {
-        assetId: data.response?.assetId || null,
-        operationPath: data.path || null
-    };
+    return { assetId: data.response?.assetId || null, opPath: data.path || null };
 }
 
-async function pollOperation(apiKey, operationPath) {
-    const maxAttempts = 30;
-    const delayMs = 2000;
+async function pollOp(apiKey, path) {
+    const PROXY = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        ? 'http://localhost:3000/api/poll' : '/api/poll';
 
-    const PROXY_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:3000/api/poll'
-        : '/api/poll';
+    for (let i = 0; i < 30; i++) {
+        await sleep(2000);
+        log(`Checking status... (${i + 1}/30)`);
 
-    for (let i = 0; i < maxAttempts; i++) {
-        await sleep(delayMs);
-        addLog(`Checking status... (attempt ${i + 1}/${maxAttempts})`, 'info');
-
-        let response;
+        let resp;
         try {
-            response = await fetch(`${PROXY_URL}?path=${encodeURIComponent(operationPath)}&apiKey=${encodeURIComponent(apiKey)}`);
+            resp = await fetch(`${PROXY}?path=${encodeURIComponent(path)}&apiKey=${encodeURIComponent(apiKey)}`);
         } catch (e) {
-            // Direct fallback
-            response = await fetch(`https://apis.roblox.com/assets/v1/${operationPath}`, {
+            resp = await fetch(`https://apis.roblox.com/assets/v1/${path}`, {
                 headers: { 'x-api-key': apiKey }
             });
         }
 
-        if (!response.ok) continue;
-
-        const data = await response.json();
+        if (!resp.ok) continue;
+        const data = await resp.json();
         if (data.done && data.response) {
-            return data.response.assetId ||
-                   (data.response.path && data.response.path.split('/').pop()) ||
-                   data.response.revisionId;
+            return data.response.assetId || data.response.path?.split('/').pop();
         }
     }
-
-    throw new Error('Operation timed out. The asset may still be processing on Roblox servers.');
+    throw new Error('Timed out waiting for Roblox to process the asset');
 }
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function animateProgress(from, to, text) {
-    const bar = document.getElementById('progressBar');
-    const pText = document.getElementById('progressText');
-    const pPercent = document.getElementById('progressPercent');
-
-    pText.textContent = text;
-
-    const duration = 600;
-    const steps = 30;
-    const stepDuration = duration / steps;
-
+// =================== PROGRESS HELPERS ===================
+async function prog(from, to, fill, glow, pctEl, labelEl, text) {
+    labelEl.textContent = text;
+    const steps = 25;
     for (let i = 0; i <= steps; i++) {
         const val = from + (to - from) * (i / steps);
-        bar.style.width = val + '%';
-        pPercent.textContent = Math.round(val) + '%';
-        await sleep(stepDuration);
+        fill.style.width = val + '%';
+        glow.style.opacity = val > 5 ? '1' : '0';
+        glow.style.left = `calc(${val}% - 8px)`;
+        pctEl.textContent = Math.round(val) + '%';
+        await sleep(600 / steps);
     }
 }
 
-function addLog(message, type = 'info') {
-    const logContent = document.getElementById('logContent');
-    const entry = document.createElement('div');
-    entry.className = 'log-entry ' + type;
-
-    const time = new Date().toLocaleTimeString('en-US', {
-        hour12: false,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-    });
-
-    const icons = {
-        info: 'ℹ️',
-        success: '✅',
-        error: '❌',
-        warning: '⚠️'
-    };
-
-    entry.innerHTML = `<span class="time">[${time}]</span> ${icons[type] || ''} ${message}`;
-    logContent.appendChild(entry);
-    logContent.scrollTop = logContent.scrollHeight;
+function log(msg, type = '') {
+    const list = document.getElementById('logList');
+    const el = document.createElement('div');
+    el.className = 'log-entry ' + type;
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    el.innerHTML = `<span class="ts">${ts}</span>${msg}`;
+    list.appendChild(el);
+    list.scrollTop = list.scrollHeight;
 }
 
-// --- Show Result ---
-function showResult(assetId, assetName, assetType) {
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// =================== RESULT ===================
+function showResult(assetId, name, type) {
     currentStep = 4;
-    updateStepUI(4);
+    updateStepper(4);
     showPanel(4);
 
-    document.getElementById('resultAssetId').textContent = assetId;
-    document.getElementById('resultName').textContent = assetName;
-    document.getElementById('resultType').textContent = assetType;
-    document.getElementById('resultTime').textContent = new Date().toLocaleString();
+    document.getElementById('resAssetId').textContent = assetId;
+    document.getElementById('resName').textContent = name;
+    document.getElementById('resType').textContent = type;
+    document.getElementById('resTime').textContent = new Date().toLocaleTimeString();
 
     const link = `https://www.roblox.com/library/${assetId}`;
-    const resultLink = document.getElementById('resultLink');
-    resultLink.href = link;
-    resultLink.setAttribute('data-link', link);
+    const a = document.getElementById('resLink');
+    a.href = link;
+    a.dataset.url = link;
 
-    document.getElementById('requireCode').textContent =
+    document.getElementById('resCode').textContent =
         `game:GetService("InsertService"):LoadAsset(${assetId})`;
 
-    // Launch confetti
-    launchConfetti();
-    showToast('Asset uploaded successfully!', 'success');
+    fireConfetti();
+    toast('Asset uploaded successfully!', 'success');
 }
 
-// --- Copy Functions ---
-function copyAssetId() {
-    const id = document.getElementById('resultAssetId').textContent;
-    copyToClipboard(id, 'Asset ID copied!');
+// =================== COPY ===================
+function copyText(id, label) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        toast(label + ' copied!', 'success');
+    }).catch(() => {
+        fallbackCopy(text);
+        toast(label + ' copied!', 'success');
+    });
 }
 
 function copyLink() {
-    const link = document.getElementById('resultLink').getAttribute('data-link') ||
-                 document.getElementById('resultLink').href;
-    copyToClipboard(link, 'Link copied!');
+    const url = document.getElementById('resLink').dataset.url || document.getElementById('resLink').href;
+    navigator.clipboard.writeText(url).then(() => toast('Link copied!', 'success'))
+        .catch(() => { fallbackCopy(url); toast('Link copied!', 'success'); });
 }
 
-function copyRequire() {
-    const code = document.getElementById('requireCode').textContent;
-    copyToClipboard(code, 'Script copied!');
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
 }
 
-function copyToClipboard(text, message) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast(message, 'success');
-    }).catch(() => {
-        // Fallback
-        const ta = document.createElement('textarea');
-        ta.value = 
+// =================== TOGGLE PASSWORD ===================
+function toggleVis(id, btn) {
+    const inp = document.getElementById(id);
+    const ico = btn.querySelector('i');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        ico.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        inp.type = 'password';
+        ico.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+
+// =================== RESET ===================
+function resetApp() {
+    currentStep = 1;
+    uploadedFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('filePreview').classList.remove('show');
+    document.getElementById('dropArea').style.display = '';
+    document.getElementById('assetName').value = '';
+    document.getElementById('assetDesc').value = '';
+    updateStepper(1);
+    showPanel(1);
+}
+
+// =================== TOAST ===================
+function toast(msg, type = 'info') {
+    const box = document.getElementById('toasts');
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', info: 'fa-circle-info' };
+    el.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${msg}</span>`;
+    box.appendChild(el);
+    setTimeout(() => {
+        el.classList.add('out');
+        setTimeout(() => el.remove(), 400);
+    }, 3200);
+}
+
+// =================== CONFETTI ===================
+function fireConfetti() {
+    const c = document.getElementById('confetti');
+    const ctx = c.getContext('2d');
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+
+    const colors = ['#a855f7', '#c084fc', '#e9d5ff', '#34d399', '#6ee7b7', '#fbbf24', '#f472b6', '#60a5fa', '#fff'];
+    const particles = [];
+
+    for (let i = 0; i < 180; i++) {
+        particles.push({
+            x: c.width * 0.5 + (Math.random() - 0.5) * 150,
+            y: c.height * 0.45,
+            vx: (Math.random() - 0.5) * 22,
+            vy: Math.random() * -20 - 4,
+            w: Math.random() * 8 + 3,
+            h: Math.random() * 5 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * 360,
+            rotV: (Math.random() - 0.5) * 14,
+            g: 0.28 + Math.random() * 0.2,
+            o: 1,
+            d: 0.006 + Math.random() * 0.008,
+        });
+    }
+
+    let f = 0;
+    function loop() {
+        ctx.clearRect(0, 0, c.width, c.height);
+        let alive = false;
+        particles.forEach(p => {
+            if (p.o <= 0) return;
+            alive = true;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.g;
+            p.vx *= 0.99;
+            p.rot += p.rotV;
+            p.o -= p.d;
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot * Math.PI / 180);
+            ctx.globalAlpha = Math.max(0, p.o);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+        });
+        f++;
+        if (alive && f < 350) requestAnimationFrame(loop);
+        else ctx.clearRect(0, 0, c.width, c.height);
+    }
+    loop();
+}
