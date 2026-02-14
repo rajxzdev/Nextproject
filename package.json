@@ -1,7 +1,7 @@
 {
   "name": "rbxm-to-toolbox-converter",
-  "version": "1.0.0",
-  "description": "Convert RBXM files to Roblox Toolbox Asset IDs",
+  "version": "2.0.0",
+  "description": "Convert RBXM files to Roblox Toolbox Asset IDs with user verification",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
