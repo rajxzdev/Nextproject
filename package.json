@@ -1,5 +1,5 @@
 {
-    "name": "next-project",
+    "name": "rbxm-converter",
     "version": "1.0.0",
     "description": "RBXM to Roblox Asset ID Converter",
     "main": "server.js",
