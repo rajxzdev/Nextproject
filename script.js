@@ -38,7 +38,6 @@
             if (s.y > h + 5) { s.y = -5; s.x = Math.random() * w; }
             if (s.y < -5) { s.y = h + 5; s.x = Math.random() * w; }
 
-            // Mouse proximity glow
             const dx = s.x - mouse.x;
             const dy = s.y - mouse.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -72,9 +71,15 @@
 let currentStep = 1;
 let uploadedFile = null;
 
+// =================== FIX ROBLOX LINKS ON LOAD ===================
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('a[href*="create.roblox.com/credentials"]').forEach(a => {
+        a.href = 'https://create.roblox.com/dashboard/credentials';
+    });
+});
+
 // =================== NAVIGATION ===================
 function nextStep(step) {
-    // Validate before moving forward
     if (step === 2 && currentStep === 1) {
         if (!validate('apiKey', 'API Key is required') || !validate('creatorId', 'Creator ID is required')) return;
     }
@@ -205,7 +210,6 @@ async function startUpload() {
     const list = document.getElementById('logList');
     const retryBtn = document.getElementById('retryBtn');
 
-    // Reset
     fill.style.width = '0%';
     glow.style.opacity = '0';
     list.innerHTML = '';
@@ -299,7 +303,6 @@ async function apiUpload({ apiKey, creatorId, creatorType, assetType, assetName,
     try {
         resp = await fetch(PROXY, { method: 'POST', body: fd });
     } catch (e) {
-        // Direct fallback
         const boundary = '----B' + Date.now();
         const enc = new TextEncoder();
         const reqJson = JSON.stringify({
@@ -414,7 +417,7 @@ function showResult(assetId, name, type) {
     document.getElementById('resType').textContent = type;
     document.getElementById('resTime').textContent = new Date().toLocaleTimeString();
 
-    const link = `https://www.roblox.com/library/${assetId}`;
+    const link = `https://create.roblox.com/store/asset/${assetId}`;
     const a = document.getElementById('resLink');
     a.href = link;
     a.dataset.url = link;
