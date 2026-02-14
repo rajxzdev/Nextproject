@@ -71,12 +71,1027 @@
 let currentStep = 1;
 let uploadedFile = null;
 
-// =================== FIX ROBLOX LINKS ON LOAD ===================
+// =================== FIX LINKS + INIT HELP ===================
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('a[href*="create.roblox.com/credentials"]').forEach(a => {
         a.href = 'https://create.roblox.com/dashboard/credentials';
     });
+    initHelpModal();
 });
+
+// =================== HELP MODAL SYSTEM ===================
+function initHelpModal() {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'helpOverlay';
+    overlay.className = 'help-overlay';
+    overlay.innerHTML = `
+        <div class="help-modal">
+            <div class="help-modal-glow"></div>
+            <div class="help-modal-content">
+                <div class="help-modal-header">
+                    <div class="help-header-left">
+                        <div class="help-icon-wrap">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <div>
+                            <h2>Help Guide</h2>
+                            <p>Step-by-step tutorial</p>
+                        </div>
+                    </div>
+                    <button class="help-close" onclick="closeHelp()">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="help-tabs">
+                    <button class="help-tab active" onclick="switchHelpTab(0, this)">
+                        <i class="fas fa-key"></i>
+                        API Key
+                    </button>
+                    <button class="help-tab" onclick="switchHelpTab(1, this)">
+                        <i class="fas fa-id-badge"></i>
+                        User ID
+                    </button>
+                    <button class="help-tab" onclick="switchHelpTab(2, this)">
+                        <i class="fas fa-file-export"></i>
+                        RBXM File
+                    </button>
+                    <button class="help-tab" onclick="switchHelpTab(3, this)">
+                        <i class="fas fa-circle-question"></i>
+                        FAQ
+                    </button>
+                </div>
+
+                <div class="help-panels">
+                    <!-- Tab 0: API Key Guide -->
+                    <div class="help-panel active" data-panel="0">
+                        <div class="guide-title">
+                            <span class="guide-badge">Guide</span>
+                            How to Get Your API Key
+                        </div>
+
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="guide-step-num">1</div>
+                                <div class="guide-step-body">
+                                    <h4>Open Roblox Creator Dashboard</h4>
+                                    <p>Go to the credentials page to create a new API key.</p>
+                                    <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener" class="guide-link">
+                                        <i class="fas fa-arrow-up-right-from-square"></i>
+                                        create.roblox.com/dashboard/credentials
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">2</div>
+                                <div class="guide-step-body">
+                                    <h4>Click "CREATE API KEY"</h4>
+                                    <p>You'll see a blue button at the top right. Click it to start creating a new key.</p>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">3</div>
+                                <div class="guide-step-body">
+                                    <h4>Fill in the Details</h4>
+                                    <p>Give your key a name (e.g. "RBXM Converter") so you can identify it later.</p>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">4</div>
+                                <div class="guide-step-body">
+                                    <h4>Add API System: "Assets"</h4>
+                                    <p>Under <strong>Access Permissions</strong>, click <strong>"Add API System"</strong> and select <strong>"Assets"</strong>.</p>
+                                    <div class="guide-note">
+                                        <i class="fas fa-triangle-exclamation"></i>
+                                        <span>Make sure to enable both <strong>Read</strong> and <strong>Write</strong> permissions for Assets.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">5</div>
+                                <div class="guide-step-body">
+                                    <h4>Set Accepted IP Addresses</h4>
+                                    <p>For testing, you can use <code>0.0.0.0/0</code> to allow all IPs. For production, use your server's IP.</p>
+                                    <div class="guide-code">
+                                        <code>0.0.0.0/0</code>
+                                        <button class="copy-btn-sm" onclick="quickCopy('0.0.0.0/0', this)">
+                                            <i class="far fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">6</div>
+                                <div class="guide-step-body">
+                                    <h4>Save & Copy Your Key</h4>
+                                    <p>Click <strong>"SAVE & GENERATE KEY"</strong>. Your API key will be shown <strong>only once</strong> — copy it immediately and paste it into this converter.</p>
+                                    <div class="guide-note warn">
+                                        <i class="fas fa-lock"></i>
+                                        <span>Never share your API key with anyone. It gives full access to upload assets to your account.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 1: User ID Guide -->
+                    <div class="help-panel" data-panel="1">
+                        <div class="guide-title">
+                            <span class="guide-badge blue">Guide</span>
+                            How to Find Your User ID
+                        </div>
+
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="guide-step-num">1</div>
+                                <div class="guide-step-body">
+                                    <h4>Open Your Roblox Profile</h4>
+                                    <p>Go to roblox.com and click on your avatar/username to open your profile page.</p>
+                                    <a href="https://www.roblox.com/home" target="_blank" rel="noopener" class="guide-link">
+                                        <i class="fas fa-arrow-up-right-from-square"></i>
+                                        roblox.com/home
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">2</div>
+                                <div class="guide-step-body">
+                                    <h4>Look at the URL</h4>
+                                    <p>Your profile URL contains your User ID. It looks like this:</p>
+                                    <div class="guide-code">
+                                        <code>roblox.com/users/<strong>123456789</strong>/profile</code>
+                                    </div>
+                                    <p style="margin-top:8px">The number <strong>123456789</strong> is your User ID.</p>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">3</div>
+                                <div class="guide-step-body">
+                                    <h4>Alternative: Use Settings</h4>
+                                    <p>You can also find your User ID in Roblox Studio:</p>
+                                    <ol class="guide-list">
+                                        <li>Open Roblox Studio</li>
+                                        <li>Go to <strong>File → Settings</strong></li>
+                                        <li>Your User ID is displayed there</li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">💡</div>
+                                <div class="guide-step-body">
+                                    <h4>For Group Upload</h4>
+                                    <p>If you want to upload to a <strong>Group</strong> instead of your personal account:</p>
+                                    <ol class="guide-list">
+                                        <li>Go to your group page on Roblox</li>
+                                        <li>The URL looks like: <code>roblox.com/groups/<strong>7654321</strong>/...</code></li>
+                                        <li>Use that number as Creator ID</li>
+                                        <li>Change Creator Type to <strong>"Group"</strong></li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: RBXM File Guide -->
+                    <div class="help-panel" data-panel="2">
+                        <div class="guide-title">
+                            <span class="guide-badge green">Guide</span>
+                            How to Get a .rbxm File
+                        </div>
+
+                        <div class="guide-steps">
+                            <div class="guide-step">
+                                <div class="guide-step-num">1</div>
+                                <div class="guide-step-body">
+                                    <h4>Open Roblox Studio</h4>
+                                    <p>Launch Roblox Studio and open the place that contains the model you want to export.</p>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">2</div>
+                                <div class="guide-step-body">
+                                    <h4>Select Your Model</h4>
+                                    <p>In the <strong>Explorer</strong> panel, click on the model, part, or object you want to export.</p>
+                                    <div class="guide-note info">
+                                        <i class="fas fa-lightbulb"></i>
+                                        <span>You can select multiple objects by holding <strong>Ctrl</strong> and clicking each one.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">3</div>
+                                <div class="guide-step-body">
+                                    <h4>Right Click → "Save to File"</h4>
+                                    <p>Right-click on the selected object in Explorer and choose <strong>"Save to File..."</strong></p>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">4</div>
+                                <div class="guide-step-body">
+                                    <h4>Save as .rbxm</h4>
+                                    <p>In the save dialog, make sure the file format is set to:</p>
+                                    <div class="guide-code">
+                                        <code>Roblox Model (*.rbxm)</code>
+                                    </div>
+                                    <p style="margin-top:8px">Choose a location and save the file. Then upload it here!</p>
+                                </div>
+                            </div>
+
+                            <div class="guide-step">
+                                <div class="guide-step-num">📝</div>
+                                <div class="guide-step-body">
+                                    <h4>.rbxm vs .rbxmx — What's the difference?</h4>
+                                    <div class="guide-compare">
+                                        <div class="compare-item">
+                                            <span class="compare-label">.rbxm</span>
+                                            <span>Binary format — smaller file size, faster</span>
+                                        </div>
+                                        <div class="compare-item">
+                                            <span class="compare-label">.rbxmx</span>
+                                            <span>XML format — human-readable, larger file</span>
+                                        </div>
+                                    </div>
+                                    <p style="margin-top:8px">Both formats work with this converter. <strong>.rbxm is recommended.</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: FAQ -->
+                    <div class="help-panel" data-panel="3">
+                        <div class="guide-title">
+                            <span class="guide-badge orange">FAQ</span>
+                            Frequently Asked Questions
+                        </div>
+
+                        <div class="faq-list">
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>What does this tool do?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p>This tool uploads your .rbxm model file to Roblox using the Open Cloud API and gives you an <strong>Asset ID</strong>. You can then use that ID to insert the model into any Roblox game via the Toolbox or scripts.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>Is this safe? Will my API key be stolen?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p>Your API key is sent directly to Roblox's servers (or through the local backend proxy). It is <strong>never stored</strong> anywhere. However, always keep your API key private and never share it.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>Why do I get "HTTP 401" or "Unauthorized" error?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p>This means your API key is invalid or expired. Make sure:</p>
+                                    <ul>
+                                        <li>You copied the full API key</li>
+                                        <li>The key has <strong>Assets (Read + Write)</strong> permission</li>
+                                        <li>Your IP is in the allowed list (use <code>0.0.0.0/0</code> for testing)</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>Why do I get "HTTP 403" or "Forbidden" error?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p>This usually means:</p>
+                                    <ul>
+                                        <li>Your Creator ID is wrong</li>
+                                        <li>You don't have permission to upload to that group</li>
+                                        <li>Your API key doesn't have the right permissions</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>Do I need the backend server (server.js)?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p><strong>Yes, recommended.</strong> Roblox's API doesn't allow direct browser requests (CORS). The backend server acts as a proxy. Run it with:</p>
+                                    <div class="guide-code" style="margin-top:8px">
+                                        <code>npm install && npm start</code>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>What's the max file size?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p>The server allows up to <strong>50 MB</strong>. Roblox's own limit depends on asset type but models are generally accepted up to ~50 MB.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>Can I upload Decals or Audio too?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p><strong>Yes!</strong> Change the "Asset Type" dropdown in Step 1. For Decals, use image files (.png, .jpg). For Audio, use .mp3 or .ogg files.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-item" onclick="toggleFaq(this)">
+                                <div class="faq-q">
+                                    <span>How do I use the Asset ID in my game?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-a">
+                                    <p>Use this script in a Roblox Script or LocalScript:</p>
+                                    <div class="guide-code" style="margin-top:8px">
+                                        <code>local asset = game:GetService("InsertService"):LoadAsset(YOUR_ID)<br>asset.Parent = workspace</code>
+                                    </div>
+                                    <p style="margin-top:8px">Or search the Asset ID in the <strong>Toolbox</strong> inside Roblox Studio.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Create help button (floating)
+    const helpBtn = document.createElement('button');
+    helpBtn.id = 'helpBtn';
+    helpBtn.className = 'help-float-btn';
+    helpBtn.onclick = openHelp;
+    helpBtn.innerHTML = `
+        <i class="fas fa-question"></i>
+        <span>Help</span>
+    `;
+    document.body.appendChild(helpBtn);
+
+    // Inject help styles
+    injectHelpStyles();
+
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeHelp();
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeHelp();
+    });
+}
+
+function openHelp() {
+    const overlay = document.getElementById('helpOverlay');
+    overlay.classList.add('visible');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeHelp() {
+    const overlay = document.getElementById('helpOverlay');
+    overlay.classList.remove('visible');
+    document.body.style.overflow = '';
+}
+
+function switchHelpTab(index, btn) {
+    document.querySelectorAll('.help-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const panel = document.querySelector(`.help-panel[data-panel="${index}"]`);
+    if (panel) {
+        panel.classList.add('active');
+        panel.style.animation = 'none';
+        void panel.offsetWidth;
+        panel.style.animation = '';
+    }
+}
+
+function toggleFaq(el) {
+    el.classList.toggle('open');
+}
+
+function quickCopy(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+        const icon = btn.querySelector('i');
+        icon.classList.replace('fa-copy', 'fa-check');
+        btn.style.color = 'var(--green)';
+        setTimeout(() => {
+            icon.classList.replace('fa-check', 'fa-copy');
+            btn.style.color = '';
+        }, 1500);
+    }).catch(() => {
+        fallbackCopy(text);
+    });
+}
+
+function injectHelpStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        /* ===== Help Float Button ===== */
+        .help-float-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(139,92,246,0.12));
+            border: 1.5px solid rgba(168,85,247,0.25);
+            border-radius: 100px;
+            color: var(--purple-200);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 650;
+            cursor: pointer;
+            backdrop-filter: blur(30px) saturate(180%);
+            -webkit-backdrop-filter: blur(30px) saturate(180%);
+            box-shadow: 0 4px 24px rgba(168,85,247,0.15),
+                        inset 0 1px 0 rgba(255,255,255,0.08);
+            transition: all 0.4s var(--ease);
+            animation: helpBtnIn 0.8s var(--ease) 1s both;
+        }
+
+        .help-float-btn:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 8px 35px rgba(168,85,247,0.25),
+                        inset 0 1px 0 rgba(255,255,255,0.12);
+            background: linear-gradient(135deg, rgba(168,85,247,0.3), rgba(139,92,246,0.2));
+        }
+
+        .help-float-btn:active {
+            transform: translateY(0) scale(0.97);
+        }
+
+        .help-float-btn i {
+            width: 20px;
+            height: 20px;
+            display: grid;
+            place-items: center;
+            background: rgba(168,85,247,0.25);
+            border-radius: 50%;
+            font-size: 10px;
+        }
+
+        @keyframes helpBtnIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ===== Help Overlay ===== */
+        .help-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9000;
+            background: rgba(5,0,14,0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s var(--ease);
+        }
+
+        .help-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .help-overlay.visible .help-modal {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        /* ===== Help Modal ===== */
+        .help-modal {
+            position: relative;
+            width: 100%;
+            max-width: 560px;
+            max-height: 85vh;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            transform: translateY(30px) scale(0.96);
+            opacity: 0;
+            transition: all 0.5s var(--ease);
+        }
+
+        .help-modal::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: var(--radius-xl);
+            background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015) 40%, rgba(255,255,255,0.03));
+            backdrop-filter: blur(60px) saturate(200%);
+            -webkit-backdrop-filter: blur(60px) saturate(200%);
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 20px 70px rgba(0,0,0,0.4),
+                        inset 0 1px 0 rgba(255,255,255,0.1);
+            z-index: 0;
+        }
+
+        .help-modal::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 10%, rgba(255,255,255,0.15) 50%, transparent 90%);
+            z-index: 1;
+        }
+
+        .help-modal-glow {
+            position: absolute;
+            top: -40%; left: -20%;
+            width: 140%; height: 100%;
+            background: radial-gradient(ellipse at 40% 0%, rgba(168,85,247,0.08), transparent 65%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .help-modal-content {
+            position: relative;
+            z-index: 2;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .help-modal-content::-webkit-scrollbar { width: 4px; }
+        .help-modal-content::-webkit-scrollbar-thumb {
+            background: rgba(168,85,247,0.2);
+            border-radius: 2px;
+        }
+
+        /* ===== Help Header ===== */
+        .help-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 22px 24px 0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .help-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .help-icon-wrap {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(168,85,247,0.05));
+            border: 1px solid rgba(168,85,247,0.15);
+            color: var(--purple-400);
+            font-size: 17px;
+        }
+
+        .help-modal-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .help-modal-header p {
+            font-size: 11px;
+            color: var(--text-3);
+            margin-top: 1px;
+        }
+
+        .help-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-2);
+            cursor: pointer;
+            font-size: 15px;
+            transition: all 0.25s;
+        }
+
+        .help-close:hover {
+            background: rgba(248,113,113,0.1);
+            border-color: rgba(248,113,113,0.15);
+            color: var(--red);
+            transform: rotate(90deg);
+        }
+
+        /* ===== Help Tabs ===== */
+        .help-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 18px 24px 0;
+            overflow-x: auto;
+        }
+
+        .help-tabs::-webkit-scrollbar { height: 0; }
+
+        .help-tab {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 16px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-3);
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s var(--ease);
+            white-space: nowrap;
+        }
+
+        .help-tab i { font-size: 11px; }
+
+        .help-tab:hover {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-2);
+        }
+
+        .help-tab.active {
+            background: rgba(168,85,247,0.12);
+            border-color: rgba(168,85,247,0.2);
+            color: var(--purple-300);
+        }
+
+        /* ===== Help Panels ===== */
+        .help-panels {
+            padding: 18px 24px 24px;
+        }
+
+        .help-panel {
+            display: none;
+            animation: panelEnter 0.4s var(--ease);
+        }
+
+        .help-panel.active {
+            display: block;
+        }
+
+        /* ===== Guide Styles ===== */
+        .guide-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .guide-badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(168,85,247,0.12);
+            color: var(--purple-400);
+            border: 1px solid rgba(168,85,247,0.15);
+        }
+
+        .guide-badge.blue {
+            background: rgba(96,165,250,0.12);
+            color: var(--blue);
+            border-color: rgba(96,165,250,0.15);
+        }
+
+        .guide-badge.green {
+            background: rgba(52,211,153,0.12);
+            color: var(--green);
+            border-color: rgba(52,211,153,0.15);
+        }
+
+        .guide-badge.orange {
+            background: rgba(251,191,36,0.12);
+            color: var(--orange);
+            border-color: rgba(251,191,36,0.15);
+        }
+
+        /* ===== Guide Steps ===== */
+        .guide-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .guide-step {
+            display: flex;
+            gap: 14px;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .guide-step:last-child {
+            border-bottom: none;
+        }
+
+        .guide-step-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: grid;
+            place-items: center;
+            background: rgba(168,85,247,0.1);
+            border: 1px solid rgba(168,85,247,0.12);
+            color: var(--purple-400);
+            font-size: 13px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+
+        .guide-step-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .guide-step-body h4 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .guide-step-body p {
+            font-size: 12px;
+            color: var(--text-2);
+            line-height: 1.6;
+        }
+
+        .guide-step-body strong {
+            color: var(--text-1);
+        }
+
+        .guide-step-body code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 2px 6px;
+            background: rgba(168,85,247,0.08);
+            border-radius: 4px;
+            color: var(--purple-300);
+        }
+
+        .guide-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 8px 14px;
+            border-radius: 9px;
+            background: rgba(168,85,247,0.06);
+            border: 1px solid rgba(168,85,247,0.1);
+            color: var(--purple-300);
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.25s;
+        }
+
+        .guide-link:hover {
+            background: rgba(168,85,247,0.12);
+            border-color: rgba(168,85,247,0.2);
+            color: var(--purple-200);
+        }
+
+        .guide-link i { font-size: 10px; }
+
+        .guide-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(251,191,36,0.05);
+            border: 1px solid rgba(251,191,36,0.1);
+            font-size: 11px;
+            color: var(--text-2);
+            line-height: 1.6;
+        }
+
+        .guide-note i {
+            color: var(--orange);
+            font-size: 12px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .guide-note.warn {
+            background: rgba(248,113,113,0.05);
+            border-color: rgba(248,113,113,0.1);
+        }
+
+        .guide-note.warn i { color: var(--red); }
+
+        .guide-note.info {
+            background: rgba(96,165,250,0.05);
+            border-color: rgba(96,165,250,0.1);
+        }
+
+        .guide-note.info i { color: var(--blue); }
+
+        .guide-code {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 9px 14px;
+            border-radius: 9px;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .guide-code code {
+            flex: 1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--purple-300);
+            background: none;
+            padding: 0;
+        }
+
+        .copy-btn-sm {
+            background: none;
+            border: none;
+            color: var(--text-3);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 12px;
+            transition: color 0.25s;
+        }
+
+        .copy-btn-sm:hover { color: var(--purple-400); }
+
+        .guide-list {
+            margin-top: 8px;
+            padding-left: 18px;
+            font-size: 12px;
+            color: var(--text-2);
+            line-height: 1.8;
+        }
+
+        .guide-list li { margin-bottom: 2px; }
+
+        .guide-compare {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .compare-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            font-size: 12px;
+            color: var(--text-2);
+        }
+
+        .compare-label {
+            padding: 3px 8px;
+            border-radius: 5px;
+            background: rgba(168,85,247,0.1);
+            color: var(--purple-300);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        /* ===== FAQ ===== */
+        .faq-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .faq-item {
+            border-radius: 12px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.04);
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s var(--ease);
+        }
+
+        .faq-item:hover {
+            border-color: rgba(255,255,255,0.08);
+        }
+
+        .faq-q {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-1);
+        }
+
+        .faq-q i {
+            font-size: 11px;
+            color: var(--text-3);
+            transition: transform 0.3s var(--ease);
+            flex-shrink: 0;
+        }
+
+        .faq-item.open .faq-q i {
+            transform: rotate(180deg);
+            color: var(--purple-400);
+        }
+
+        .faq-a {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s var(--ease), padding 0.3s;
+            padding: 0 16px;
+        }
+
+        .faq-item.open .faq-a {
+            max-height: 400px;
+            padding: 0 16px 16px;
+        }
+
+        .faq-a p {
+            font-size: 12px;
+            color: var(--text-2);
+            line-height: 1.7;
+        }
+
+        .faq-a ul {
+            margin-top: 6px;
+            padding-left: 18px;
+            font-size: 12px;
+            color: var(--text-2);
+            line-height: 1.8;
+        }
+
+        .faq-a code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 2px 6px;
+            background: rgba(168,85,247,0.08);
+            border-radius: 4px;
+            color: var(--purple-300);
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 500px) {
+            .help-overlay { padding: 10px; }
+            .help-modal { max-height: 90vh; border-radius: 20px; }
+            .help-modal-header { padding: 18px 18px 0; }
+            .help-tabs { padding: 14px 18px 0; }
+            .help-panels { padding: 14px 18px 20px; }
+            .help-float-btn {
+                bottom: 16px;
+                right: 16px;
+                padding: 10px 16px;
+                font-size: 12px;
+            }
+            .help-float-btn span { display: none; }
+            .help-float-btn i { margin: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+}
 
 // =================== NAVIGATION ===================
 function nextStep(step) {
