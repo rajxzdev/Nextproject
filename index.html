@@ -2,340 +2,358 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RBXM → Roblox Asset ID Converter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RBXM → Asset ID Converter</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
-    <!-- Animated Galaxy Background -->
-    <div class="galaxy-bg">
-        <div class="stars" id="stars"></div>
-        <div class="nebula nebula-1"></div>
-        <div class="nebula nebula-2"></div>
-        <div class="nebula nebula-3"></div>
-        <div class="shooting-stars" id="shootingStars"></div>
-        <div class="floating-orbs" id="floatingOrbs"></div>
-    </div>
 
-    <!-- Main Container -->
-    <div class="main-container">
-        <!-- Header -->
-        <header class="glass-header" id="header">
-            <div class="header-content">
-                <div class="logo-section">
-                    <div class="logo-icon">
-                        <i class="fas fa-cube"></i>
-                        <div class="logo-ring"></div>
-                    </div>
-                    <div class="logo-text">
-                        <h1>RBXM Converter</h1>
-                        <span class="subtitle">Upload • Convert • Get Asset ID</span>
-                    </div>
-                </div>
-                <div class="header-badge glass-pill">
-                    <div class="status-dot"></div>
-                    <span>Roblox Open Cloud</span>
-                </div>
-            </div>
-        </header>
+    <!-- Galaxy Background -->
+    <canvas id="galaxyCanvas"></canvas>
+    <div class="aurora aurora-1"></div>
+    <div class="aurora aurora-2"></div>
+    <div class="aurora aurora-3"></div>
+    <div class="grain-overlay"></div>
 
-        <!-- Steps Indicator -->
-        <div class="steps-container glass-card" id="stepsContainer">
-            <div class="step active" data-step="1">
-                <div class="step-circle">
-                    <i class="fas fa-key"></i>
+    <!-- App -->
+    <div class="app">
+        <!-- Nav Bar -->
+        <nav class="navbar">
+            <div class="nav-inner">
+                <div class="nav-brand">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
+                            <line x1="12" y1="22.08" x2="12" y2="11.73"/>
+                        </svg>
+                        <div class="brand-glow"></div>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">RBXM Converter</span>
+                        <span class="brand-sub">Open Cloud Asset Upload</span>
+                    </div>
                 </div>
-                <span>API Setup</span>
+                <div class="nav-status">
+                    <span class="status-indicator"></span>
+                    <span>Ready</span>
+                </div>
             </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="2">
-                <div class="step-circle">
-                    <i class="fas fa-cloud-upload-alt"></i>
+        </nav>
+
+        <!-- Progress Steps -->
+        <div class="stepper">
+            <div class="stepper-inner">
+                <div class="stepper-track">
+                    <div class="stepper-fill" id="stepperFill"></div>
                 </div>
-                <span>Upload</span>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="3">
-                <div class="step-circle">
-                    <i class="fas fa-magic"></i>
+                <div class="step-node active" data-step="1">
+                    <div class="node-dot"><i class="fas fa-key"></i></div>
+                    <span>Setup</span>
                 </div>
-                <span>Convert</span>
-            </div>
-            <div class="step-line"></div>
-            <div class="step" data-step="4">
-                <div class="step-circle">
-                    <i class="fas fa-check-circle"></i>
+                <div class="step-node" data-step="2">
+                    <div class="node-dot"><i class="fas fa-file-upload"></i></div>
+                    <span>Upload</span>
                 </div>
-                <span>Result</span>
+                <div class="step-node" data-step="3">
+                    <div class="node-dot"><i class="fas fa-sync-alt"></i></div>
+                    <span>Convert</span>
+                </div>
+                <div class="step-node" data-step="4">
+                    <div class="node-dot"><i class="fas fa-check"></i></div>
+                    <span>Done</span>
+                </div>
             </div>
         </div>
 
-        <!-- Content Panels -->
-        <div class="panels-wrapper">
-            <!-- Panel 1: API Setup -->
-            <div class="panel glass-card active" id="panel1">
-                <div class="panel-header">
-                    <div class="panel-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <div>
-                        <h2>API Configuration</h2>
-                        <p>Enter your Roblox Open Cloud credentials</p>
-                    </div>
-                </div>
+        <!-- Panels Container -->
+        <div class="panel-container">
 
-                <div class="form-group">
-                    <label class="glass-label">
-                        <i class="fas fa-key"></i>
-                        API Key
-                    </label>
-                    <div class="input-wrapper glass-input">
-                        <input type="password" id="apiKey" placeholder="Enter your Open Cloud API Key" autocomplete="off">
-                        <button class="toggle-visibility" onclick="togglePassword('apiKey', this)">
-                            <i class="fas fa-eye"></i>
+            <!-- Panel 1: API Setup -->
+            <section class="panel active" id="panel-1">
+                <div class="card">
+                    <div class="card-glow"></div>
+                    <div class="card-content">
+                        <div class="card-header">
+                            <div class="header-icon purple">
+                                <i class="fas fa-shield-halved"></i>
+                            </div>
+                            <div>
+                                <h2>API Configuration</h2>
+                                <p>Connect to Roblox Open Cloud</p>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label>
+                                <i class="fas fa-key"></i>
+                                API Key
+                            </label>
+                            <div class="input-glass">
+                                <input type="password" id="apiKey" placeholder="Enter your Open Cloud API Key" spellcheck="false">
+                                <button class="input-action" onclick="toggleVis('apiKey',this)" type="button">
+                                    <i class="far fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="field-hint">
+                                <i class="fas fa-circle-info"></i>
+                                Get key at <a href="https://create.roblox.com/credentials" target="_blank" rel="noopener">create.roblox.com/credentials</a>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label>
+                                <i class="fas fa-id-badge"></i>
+                                Creator ID
+                            </label>
+                            <div class="input-glass">
+                                <input type="text" id="creatorId" placeholder="Your Roblox User ID or Group ID" spellcheck="false">
+                            </div>
+                        </div>
+
+                        <div class="field-row">
+                            <div class="field">
+                                <label>
+                                    <i class="fas fa-user-tag"></i>
+                                    Creator Type
+                                </label>
+                                <div class="select-glass">
+                                    <select id="creatorType">
+                                        <option value="User">User</option>
+                                        <option value="Group">Group</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <div class="field">
+                                <label>
+                                    <i class="fas fa-shapes"></i>
+                                    Asset Type
+                                </label>
+                                <div class="select-glass">
+                                    <select id="assetType">
+                                        <option value="Model">Model</option>
+                                        <option value="Decal">Decal</option>
+                                        <option value="Audio">Audio</option>
+                                    </select>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="nextStep(2)">
+                            Continue
+                            <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
-                    <span class="input-hint">
-                        <i class="fas fa-info-circle"></i>
-                        Get your API key from <a href="https://create.roblox.com/credentials" target="_blank">create.roblox.com/credentials</a>
-                    </span>
                 </div>
-
-                <div class="form-group">
-                    <label class="glass-label">
-                        <i class="fas fa-user"></i>
-                        Creator ID (User ID)
-                    </label>
-                    <div class="input-wrapper glass-input">
-                        <input type="text" id="creatorId" placeholder="Enter your Roblox User ID" autocomplete="off">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="glass-label">
-                        <i class="fas fa-users"></i>
-                        Creator Type
-                    </label>
-                    <div class="select-wrapper glass-input">
-                        <select id="creatorType">
-                            <option value="User">User</option>
-                            <option value="Group">Group</option>
-                        </select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="glass-label">
-                        <i class="fas fa-cube"></i>
-                        Asset Type
-                    </label>
-                    <div class="select-wrapper glass-input">
-                        <select id="assetType">
-                            <option value="Model">Model (.rbxm)</option>
-                            <option value="Decal">Decal</option>
-                            <option value="Audio">Audio</option>
-                        </select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
-                    </div>
-                </div>
-
-                <button class="glass-button primary" onclick="goToStep(2)">
-                    <span>Continue</span>
-                    <i class="fas fa-arrow-right"></i>
-                    <div class="button-shine"></div>
-                </button>
-            </div>
+            </section>
 
             <!-- Panel 2: Upload -->
-            <div class="panel glass-card" id="panel2">
-                <div class="panel-header">
-                    <div class="panel-icon">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <div>
-                        <h2>Upload RBXM File</h2>
-                        <p>Drag & drop or browse your file</p>
-                    </div>
-                </div>
-
-                <div class="dropzone glass-dropzone" id="dropzone">
-                    <input type="file" id="fileInput" accept=".rbxm,.rbxmx" hidden>
-                    <div class="dropzone-content">
-                        <div class="dropzone-icon">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <div class="dropzone-ring"></div>
+            <section class="panel" id="panel-2">
+                <div class="card">
+                    <div class="card-glow"></div>
+                    <div class="card-content">
+                        <div class="card-header">
+                            <div class="header-icon blue">
+                                <i class="fas fa-cloud-arrow-up"></i>
+                            </div>
+                            <div>
+                                <h2>Upload File</h2>
+                                <p>Select your RBXM model file</p>
+                            </div>
                         </div>
-                        <h3>Drop your RBXM file here</h3>
-                        <p>or click to browse</p>
-                        <div class="file-types glass-pill">
-                            <span>.rbxm</span>
-                            <span>.rbxmx</span>
+
+                        <div class="drop-area" id="dropArea">
+                            <input type="file" id="fileInput" accept=".rbxm,.rbxmx" hidden>
+                            <div class="drop-visual">
+                                <div class="drop-icon-wrap">
+                                    <div class="drop-ring ring-1"></div>
+                                    <div class="drop-ring ring-2"></div>
+                                    <div class="drop-ring ring-3"></div>
+                                    <i class="fas fa-cloud-arrow-up"></i>
+                                </div>
+                                <h3>Drag & drop your file</h3>
+                                <p>or tap to browse</p>
+                                <div class="supported-badge">
+                                    <span>.rbxm</span>
+                                    <span>.rbxmx</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="file-preview" id="filePreview">
+                            <div class="file-preview-icon">
+                                <i class="fas fa-cube"></i>
+                            </div>
+                            <div class="file-preview-info">
+                                <span class="fp-name" id="fpName">-</span>
+                                <span class="fp-size" id="fpSize">-</span>
+                            </div>
+                            <button class="file-remove" onclick="clearFile()" type="button">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                        </div>
+
+                        <div class="field">
+                            <label>
+                                <i class="fas fa-pencil"></i>
+                                Asset Name
+                            </label>
+                            <div class="input-glass">
+                                <input type="text" id="assetName" placeholder="Display name on Roblox">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label>
+                                <i class="fas fa-align-left"></i>
+                                Description
+                                <span class="optional">optional</span>
+                            </label>
+                            <div class="input-glass">
+                                <textarea id="assetDesc" placeholder="Asset description..." rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="btn-row">
+                            <button class="btn btn-ghost" onclick="nextStep(1)">
+                                <i class="fas fa-arrow-left"></i>
+                                Back
+                            </button>
+                            <button class="btn btn-primary" onclick="nextStep(3)">
+                                Upload & Convert
+                                <i class="fas fa-wand-magic-sparkles"></i>
+                            </button>
                         </div>
                     </div>
-                    <div class="dropzone-hover-effect"></div>
                 </div>
-
-                <!-- File Info (shown after upload) -->
-                <div class="file-info glass-card-inner" id="fileInfo" style="display: none;">
-                    <div class="file-icon">
-                        <i class="fas fa-file-code"></i>
-                    </div>
-                    <div class="file-details">
-                        <span class="file-name" id="fileName">model.rbxm</span>
-                        <span class="file-size" id="fileSize">2.4 MB</span>
-                    </div>
-                    <button class="remove-file" onclick="removeFile()">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-
-                <div class="form-group">
-                    <label class="glass-label">
-                        <i class="fas fa-tag"></i>
-                        Asset Name
-                    </label>
-                    <div class="input-wrapper glass-input">
-                        <input type="text" id="assetName" placeholder="Enter asset display name">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="glass-label">
-                        <i class="fas fa-align-left"></i>
-                        Description (optional)
-                    </label>
-                    <div class="input-wrapper glass-input">
-                        <textarea id="assetDescription" placeholder="Enter asset description" rows="3"></textarea>
-                    </div>
-                </div>
-
-                <div class="button-group">
-                    <button class="glass-button secondary" onclick="goToStep(1)">
-                        <i class="fas fa-arrow-left"></i>
-                        <span>Back</span>
-                    </button>
-                    <button class="glass-button primary" onclick="goToStep(3)">
-                        <span>Upload & Convert</span>
-                        <i class="fas fa-magic"></i>
-                        <div class="button-shine"></div>
-                    </button>
-                </div>
-            </div>
+            </section>
 
             <!-- Panel 3: Converting -->
-            <div class="panel glass-card" id="panel3">
-                <div class="panel-header">
-                    <div class="panel-icon spinning">
-                        <i class="fas fa-cog"></i>
-                    </div>
-                    <div>
-                        <h2>Converting...</h2>
-                        <p>Uploading your asset to Roblox</p>
-                    </div>
-                </div>
-
-                <div class="progress-section">
-                    <div class="progress-bar-container glass-progress">
-                        <div class="progress-bar" id="progressBar">
-                            <div class="progress-glow"></div>
+            <section class="panel" id="panel-3">
+                <div class="card">
+                    <div class="card-glow"></div>
+                    <div class="card-content">
+                        <div class="card-header">
+                            <div class="header-icon orange">
+                                <i class="fas fa-gear fa-spin"></i>
+                            </div>
+                            <div>
+                                <h2 id="convertTitle">Converting...</h2>
+                                <p id="convertSub">Uploading asset to Roblox</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="progress-info">
-                        <span id="progressText">Preparing upload...</span>
-                        <span id="progressPercent">0%</span>
-                    </div>
-                </div>
 
-                <div class="log-container glass-card-inner" id="logContainer">
-                    <div class="log-header">
-                        <i class="fas fa-terminal"></i>
-                        <span>Process Log</span>
+                        <div class="progress-wrap">
+                            <div class="progress-track">
+                                <div class="progress-fill" id="progressFill"></div>
+                                <div class="progress-glow" id="progressGlow"></div>
+                            </div>
+                            <div class="progress-meta">
+                                <span id="progressLabel">Preparing...</span>
+                                <span id="progressPct" class="pct">0%</span>
+                            </div>
+                        </div>
+
+                        <div class="log-box" id="logBox">
+                            <div class="log-bar">
+                                <i class="fas fa-terminal"></i>
+                                <span>Activity Log</span>
+                            </div>
+                            <div class="log-list" id="logList"></div>
+                        </div>
+
+                        <button class="btn btn-ghost" id="retryBtn" style="display:none" onclick="nextStep(2)">
+                            <i class="fas fa-arrow-left"></i>
+                            Go Back & Retry
+                        </button>
                     </div>
-                    <div class="log-content" id="logContent"></div>
                 </div>
-            </div>
+            </section>
 
             <!-- Panel 4: Result -->
-            <div class="panel glass-card" id="panel4">
-                <div class="panel-header">
-                    <div class="panel-icon success-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div>
-                        <h2>Conversion Complete!</h2>
-                        <p>Your asset has been uploaded successfully</p>
-                    </div>
-                </div>
+            <section class="panel" id="panel-4">
+                <div class="card">
+                    <div class="card-glow success-glow"></div>
+                    <div class="card-content">
+                        <div class="success-hero">
+                            <div class="success-check">
+                                <svg viewBox="0 0 52 52">
+                                    <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" stroke-width="2"/>
+                                    <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M14 27l7 7 16-16" class="check-path"/>
+                                </svg>
+                            </div>
+                            <h2>Upload Successful!</h2>
+                            <p>Your asset is live on Roblox</p>
+                        </div>
 
-                <div class="result-card glass-card-inner success-glow">
-                    <div class="result-label">Asset ID</div>
-                    <div class="result-id-wrapper">
-                        <span class="result-id" id="resultAssetId">123456789</span>
-                        <button class="copy-button glass-button-sm" onclick="copyAssetId()">
-                            <i class="fas fa-copy"></i>
-                            <span>Copy</span>
+                        <div class="result-block main-result">
+                            <span class="result-label">Asset ID</span>
+                            <div class="result-value-row">
+                                <span class="result-big-id" id="resAssetId">-</span>
+                                <button class="copy-btn" onclick="copyText('resAssetId','Asset ID')" type="button">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="result-block">
+                            <span class="result-label">Library Link</span>
+                            <div class="result-value-row">
+                                <a class="result-link" id="resLink" href="#" target="_blank" rel="noopener">
+                                    Open in Roblox
+                                    <i class="fas fa-arrow-up-right-from-square"></i>
+                                </a>
+                                <button class="copy-btn" onclick="copyLink()" type="button">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="result-block">
+                            <span class="result-label">Insert Script</span>
+                            <div class="code-row">
+                                <code id="resCode">-</code>
+                                <button class="copy-btn" onclick="copyText('resCode','Script')" type="button">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="meta-grid">
+                            <div class="meta-item">
+                                <span class="meta-key"><i class="fas fa-tag"></i> Name</span>
+                                <span class="meta-val" id="resName">-</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-key"><i class="fas fa-cube"></i> Type</span>
+                                <span class="meta-val" id="resType">-</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-key"><i class="fas fa-clock"></i> Time</span>
+                                <span class="meta-val" id="resTime">-</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="resetApp()">
+                            <i class="fas fa-plus"></i>
+                            Convert Another
                         </button>
                     </div>
                 </div>
-
-                <div class="result-card glass-card-inner">
-                    <div class="result-label">Toolbox Link</div>
-                    <div class="result-id-wrapper">
-                        <a class="result-link" id="resultLink" href="#" target="_blank">
-                            Open in Roblox Library
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                        <button class="copy-button glass-button-sm" onclick="copyLink()">
-                            <i class="fas fa-copy"></i>
-                            <span>Copy</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="result-card glass-card-inner">
-                    <div class="result-label">Require Script</div>
-                    <div class="code-block">
-                        <code id="requireCode">game:GetService("InsertService"):LoadAsset(123456789)</code>
-                        <button class="copy-button glass-button-sm" onclick="copyRequire()">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="result-details glass-card-inner">
-                    <div class="detail-row">
-                        <span><i class="fas fa-tag"></i> Name</span>
-                        <span id="resultName">-</span>
-                    </div>
-                    <div class="detail-row">
-                        <span><i class="fas fa-cube"></i> Type</span>
-                        <span id="resultType">Model</span>
-                    </div>
-                    <div class="detail-row">
-                        <span><i class="fas fa-clock"></i> Created</span>
-                        <span id="resultTime">-</span>
-                    </div>
-                </div>
-
-                <div class="button-group">
-                    <button class="glass-button secondary" onclick="resetAll()">
-                        <i class="fas fa-redo"></i>
-                        <span>Convert Another</span>
-                    </button>
-                </div>
-
-                <!-- Confetti Canvas -->
-                <canvas id="confettiCanvas"></canvas>
-            </div>
+            </section>
         </div>
-
-        <!-- Toast Notification -->
-        <div class="toast-container" id="toastContainer"></div>
     </div>
+
+    <!-- Toast Container -->
+    <div id="toasts"></div>
+
+    <!-- Confetti -->
+    <canvas id="confetti"></canvas>
 
     <script src="script.js"></script>
 </body>
-                  </html>
+</html>
