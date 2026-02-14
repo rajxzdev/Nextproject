@@ -1,219 +1,139 @@
-// ============================================
-// Backend Proxy Server for Roblox Open Cloud API
-// Needed because Roblox API doesn't support CORS
-// ============================================
+// =============================================
+// Backend Proxy for Roblox Open Cloud API
+// (Required because Roblox doesn't allow CORS)
+// =============================================
 
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
-const fetch = require('node-fetch');
 const path = require('path');
-const FormData = require('form-data');
+
+// Use dynamic import for node-fetch v3 or require for v2
+let fetch;
+try {
+    fetch = require('node-fetch');
+} catch (e) {
+    fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
+}
 
 const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 }
+});
 
-// Enable CORS
 app.use(cors());
-
-// Serve static files
 app.use(express.static(path.join(__dirname)));
 
-// ===== Upload Asset Endpoint =====
+// ===== Upload Endpoint =====
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
-        const {
-            apiKey,
-            creatorId,
-            creatorType,
-            assetType,
-            assetName,
-            assetDescription
-        } = req.body;
-
+        const { apiKey, creatorId, creatorType, assetType, assetName, assetDescription } = req.body;
         const file = req.file;
 
         if (!apiKey || !creatorId || !file) {
-            return res.status(400).json({
-                error: 'Missing required fields: apiKey, creatorId, file'
-            });
+            return res.status(400).json({ message: 'Missing apiKey, creatorId, or file' });
         }
 
-        console.log(`[Upload] Asset: ${assetName}, Type: ${assetType}, Creator: ${creatorType}:${creatorId}`);
-        console.log(`[Upload] File: ${file.originalname} (${(file.size / 1024).toFixed(1)} KB)`);
+        console.log(`\n📤 Upload: "${assetName}" (${assetType}) by ${creatorType}:${creatorId}`);
+        console.log(`   File: ${file.originalname} (${(file.size / 1024).toFixed(1)} KB)`);
 
-        // Build the request JSON
-        const requestPayload = {
+        const reqPayload = {
             assetType: assetType || 'Model',
-            displayName: assetName || 'Untitled Asset',
-            description: assetDescription || assetName || 'Uploaded via RBXM Converter',
+            displayName: assetName || 'Untitled',
+            description: assetDescription || assetName || '',
             creationContext: {
-                creator: {}
+                creator: creatorType === 'Group'
+                    ? { groupId: creatorId }
+                    : { userId: creatorId }
             }
         };
 
-        if (creatorType === 'Group') {
-            requestPayload.creationContext.creator.groupId = creatorId;
-        } else {
-            requestPayload.creationContext.creator.userId = creatorId;
-        }
+        const boundary = '----Boundary' + Date.now();
+        const reqJson = JSON.stringify(reqPayload);
 
-        // Build multipart form data for Roblox API
-        const boundary = '----RBXMConverterBoundary' + Date.now();
+        const ctMap = { Model: 'application/octet-stream', Decal: 'image/png', Audio: 'audio/mpeg' };
 
-        const requestJson = JSON.stringify(requestPayload);
-
-        // Manually construct multipart body
-        const parts = [];
-
-        // Part 1: request JSON
-        parts.push(
+        const parts = [
             Buffer.from(
-                `--${boundary}\r\n` +
-                `Content-Disposition: form-data; name="request"\r\n` +
-                `Content-Type: application/json\r\n\r\n` +
-                requestJson + '\r\n'
-            )
-        );
-
-        // Part 2: file content
-        const contentTypeMap = {
-            'Model': 'application/octet-stream',
-            'Decal': 'image/png',
-            'Audio': 'audio/mpeg',
-        };
-
-        parts.push(
+                `--${boundary}\r\nContent-Disposition: form-data; name="request"\r\nContent-Type: application/json\r\n\r\n${reqJson}\r\n`
+            ),
             Buffer.from(
-                `--${boundary}\r\n` +
-                `Content-Disposition: form-data; name="fileContent"; filename="${file.originalname}"\r\n` +
-                `Content-Type: ${contentTypeMap[assetType] || 'application/octet-stream'}\r\n\r\n`
-            )
-        );
-        parts.push(file.buffer);
-        parts.push(Buffer.from('\r\n'));
-
-        // End boundary
-        parts.push(Buffer.from(`--${boundary}--\r\n`));
+                `--${boundary}\r\nContent-Disposition: form-data; name="fileContent"; filename="${file.originalname}"\r\nContent-Type: ${ctMap[assetType] || 'application/octet-stream'}\r\n\r\n`
+            ),
+            file.buffer,
+            Buffer.from(`\r\n--${boundary}--\r\n`)
+        ];
 
         const body = Buffer.concat(parts);
 
-        // Make request to Roblox Open Cloud API
-        const robloxResponse = await fetch('https://apis.roblox.com/assets/v1/assets', {
+        const rRes = await fetch('https://apis.roblox.com/assets/v1/assets', {
             method: 'POST',
             headers: {
                 'x-api-key': apiKey,
                 'Content-Type': `multipart/form-data; boundary=${boundary}`,
                 'Content-Length': body.length.toString(),
             },
-            body: body,
+            body
         });
 
-        const responseText = await robloxResponse.text();
-        console.log(`[Roblox API] Status: ${robloxResponse.status}`);
-        console.log(`[Roblox API] Response: ${responseText.substring(0, 500)}`);
+        const txt = await rRes.text();
+        console.log(`   Roblox ${rRes.status}: ${txt.substring(0, 300)}`);
 
-        if (!robloxResponse.ok) {
-            let errorData;
-            try {
-                errorData = JSON.parse(responseText);
-            } catch (e) {
-                errorData = { message: responseText };
-            }
-            return res.status(robloxResponse.status).json({
-                error: 'Roblox API error',
-                message: errorData.message || errorData.error || responseText,
-                details: errorData
-            });
+        if (!rRes.ok) {
+            let err;
+            try { err = JSON.parse(txt); } catch (e) { err = { message: txt }; }
+            return res.status(rRes.status).json(err);
         }
 
         let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            data = { raw: responseText };
-        }
-
-        console.log(`[Upload] Success! Operation path: ${data.path || 'N/A'}`);
+        try { data = JSON.parse(txt); } catch (e) { data = { raw: txt }; }
         res.json(data);
 
     } catch (err) {
-        console.error('[Upload Error]', err);
-        res.status(500).json({
-            error: 'Server error',
-            message: err.message
-        });
+        console.error('❌ Upload error:', err.message);
+        res.status(500).json({ message: err.message });
     }
 });
 
-// ===== Poll Operation Endpoint =====
+// ===== Poll Endpoint =====
 app.get('/api/poll', async (req, res) => {
     try {
-        const { path: operationPath, apiKey } = req.query;
-
-        if (!operationPath || !apiKey) {
-            return res.status(400).json({
-                error: 'Missing path or apiKey query parameters'
-            });
+        const { path: opPath, apiKey } = req.query;
+        if (!opPath || !apiKey) {
+            return res.status(400).json({ message: 'Missing path or apiKey' });
         }
 
-        console.log(`[Poll] Checking: ${operationPath}`);
+        const rRes = await fetch(`https://apis.roblox.com/assets/v1/${opPath}`, {
+            headers: { 'x-api-key': apiKey }
+        });
 
-        const robloxResponse = await fetch(
-            `https://apis.roblox.com/assets/v1/${operationPath}`,
-            {
-                headers: { 'x-api-key': apiKey }
-            }
-        );
-
-        const responseText = await robloxResponse.text();
-
-        if (!robloxResponse.ok) {
-            return res.status(robloxResponse.status).json({
-                error: 'Poll failed',
-                message: responseText
-            });
-        }
+        const txt = await rRes.text();
+        if (!rRes.ok) return res.status(rRes.status).json({ message: txt });
 
         let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            data = { raw: responseText };
-        }
-
-        console.log(`[Poll] Done: ${data.done}, AssetId: ${data.response?.assetId || 'pending'}`);
+        try { data = JSON.parse(txt); } catch (e) { data = { raw: txt }; }
         res.json(data);
 
     } catch (err) {
-        console.error('[Poll Error]', err);
-        res.status(500).json({
-            error: 'Server error',
-            message: err.message
-        });
+        console.error('❌ Poll error:', err.message);
+        res.status(500).json({ message: err.message });
     }
 });
 
-// ===== Health Check =====
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+// ===== Health =====
+app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 
-// ===== Catch-all: serve index.html =====
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
+// ===== Fallback =====
+app.get('*', (_, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
-// ===== Start Server =====
+// ===== Start =====
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log('');
-    console.log('╔══════════════════════════════════════════════╗');
-    console.log('║   RBXM → Roblox Asset ID Converter Server   ║');
-    console.log('╠══════════════════════════════════════════════╣');
-    console.log(`║   🌐 http://localhost:${PORT}                   ║`);
-    console.log('║   📡 API Proxy: /api/upload                  ║');
-    console.log('║   🔍 Poll:      /api/poll                    ║');
-    console.log('╚══════════════════════════════════════════════╝');
-    console.log('');
+    console.log(`
+╔═══════════════════════════════════════╗
+║  🚀 RBXM Converter Server Running    ║
+║  🌐 http://localhost:${PORT}             ║
+╚═══════════════════════════════════════╝
+    `);
 });
