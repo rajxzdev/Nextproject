@@ -1,10 +1,13 @@
 {
-  "routes": [
-    { "src": "/api/ping", "dest": "/api/ping.js" },
-    { "src": "/api/validate-key", "dest": "/api/validate-key.js" },
-    { "src": "/api/upload", "dest": "/api/upload.js" },
-    { "src": "/style.css", "dest": "/style.css" },
-    { "src": "/script.js", "dest": "/script.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "functions": {
+    "api/*.js": {
+      "memory": 256,
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/api/ping", "destination": "/api/ping" },
+    { "source": "/api/validate-key", "destination": "/api/validate-key" },
+    { "source": "/api/upload", "destination": "/api/upload" }
   ]
 }
