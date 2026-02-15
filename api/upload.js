@@ -1,232 +1,193 @@
-var https = require("https");
-var Busboy = require("busboy");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBXM → Asset ID Converter</title>
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<canvas id="bgCanvas"></canvas>
+<div class="app">
 
-module.exports = function (req, res) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    <!-- SERVER STATUS -->
+    <div class="glass server-status" id="serverStatus">
+        <i class="fas fa-spinner fa-spin"></i> Mengecek koneksi server...
+    </div>
 
-    if (req.method === "OPTIONS") {
-        res.status(200).end();
-        return;
-    }
+    <header class="glass header">
+        <div class="header-left">
+            <div class="logo"><i class="fas fa-cube"></i></div>
+            <div><h1>RBXM Converter</h1><span class="sub">.rbxm → Roblox Asset ID</span></div>
+        </div>
+        <button class="btn btn-ghost" id="btnHelp"><i class="fas fa-question-circle"></i> Help</button>
+    </header>
 
-    if (req.method !== "POST") {
-        res.status(405).json({ success: false, message: "POST only" });
-        return;
-    }
+    <div class="glass steps-bar">
+        <div class="stp active" data-s="1"><div class="stp-c"><i class="fas fa-key"></i></div><span>API Key</span></div>
+        <div class="stp-line" id="line1"></div>
+        <div class="stp" data-s="2"><div class="stp-c"><i class="fas fa-upload"></i></div><span>File</span></div>
+        <div class="stp-line" id="line2"></div>
+        <div class="stp" data-s="3"><div class="stp-c"><i class="fas fa-cog"></i></div><span>Config</span></div>
+        <div class="stp-line" id="line3"></div>
+        <div class="stp" data-s="4"><div class="stp-c"><i class="fas fa-check"></i></div><span>Done</span></div>
+    </div>
 
-    var fields = {};
-    var fileBuffer = null;
-    var fileName = "model.rbxm";
-    var busboy;
+    <div class="panels">
+        <!-- STEP 1 -->
+        <section class="panel active" id="p1">
+            <div class="glass card">
+                <div class="card-top"><div class="card-ico"><i class="fas fa-key"></i></div><h2>Enter API Key</h2><p>Roblox Open Cloud API Key</p></div>
+                <div class="field">
+                    <label><i class="fas fa-shield-alt"></i> API Key</label>
+                    <div class="input-wrap">
+                        <input type="password" id="inKey" placeholder="Paste API key..." autocomplete="off">
+                        <button class="btn-ico" id="btnEye"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <small class="hint"><i class="fas fa-lock"></i> Key tidak disimpan</small>
+                </div>
+                <div id="keyStatus" class="status-msg"></div>
+                <!-- Debug info -->
+                <div id="keyDebug" class="debug-box" style="display:none"></div>
+                <div class="card-btns">
+                    <button class="btn btn-text" id="btnHowKey"><i class="fas fa-question-circle"></i> Cara dapat API Key?</button>
+                    <button class="btn btn-primary" id="btnValidate"><i class="fas fa-arrow-right"></i> Validasi & Lanjut</button>
+                </div>
+            </div>
+        </section>
 
-    try {
-        busboy = Busboy({ headers: req.headers });
-    } catch (e) {
-        console.log("Busboy init error:", e.message);
-        res.status(400).json({
-            success: false,
-            message: "Upload parse error: " + e.message,
-        });
-        return;
-    }
+        <!-- STEP 2 -->
+        <section class="panel" id="p2">
+            <div class="glass card">
+                <div class="card-top"><div class="card-ico"><i class="fas fa-cloud-upload-alt"></i></div><h2>Upload File</h2><p>Pilih file .rbxm atau .rbxmx</p></div>
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-inner"><i class="fas fa-cloud-upload-alt drop-icon"></i><h3>Drop file di sini</h3><p>atau klik untuk browse</p><span class="badge">.rbxm / .rbxmx • max 50MB</span></div>
+                    <input type="file" id="inFile" accept=".rbxm,.rbxmx" hidden>
+                </div>
+                <div id="fileCard" class="file-card glass" style="display:none">
+                    <div class="fc-ico"><i class="fas fa-cube"></i></div>
+                    <div class="fc-info"><b id="fName">-</b><small id="fSize">-</small></div>
+                    <button class="btn-ico" id="btnRemove"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="card-btns">
+                    <button class="btn btn-ghost" id="btn2back"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-primary" id="btn2next" disabled><i class="fas fa-arrow-right"></i> Lanjut</button>
+                </div>
+            </div>
+        </section>
 
-    busboy.on("field", function (name, val) {
-        fields[name] = val;
-    });
+        <!-- STEP 3 -->
+        <section class="panel" id="p3">
+            <div class="glass card">
+                <div class="card-top"><div class="card-ico"><i class="fas fa-cog"></i></div><h2>Konfigurasi</h2><p>Atur detail asset</p></div>
+                <div class="field"><label><i class="fas fa-tag"></i> Nama Asset *</label><input type="text" id="inName" class="inp" placeholder="Nama asset..." maxlength="50"><small class="counter"><span id="cName">0</span>/50</small></div>
+                <div class="field"><label><i class="fas fa-align-left"></i> Deskripsi</label><textarea id="inDesc" class="inp" rows="3" placeholder="Deskripsi..." maxlength="1000"></textarea><small class="counter"><span id="cDesc">0</span>/1000</small></div>
+                <div class="field-row">
+                    <div class="field"><label><i class="fas fa-user-tag"></i> Creator Type</label><div class="sel-wrap"><select id="inCreatorType" class="inp"><option value="User">User</option><option value="Group">Group</option></select><i class="fas fa-chevron-down sel-arrow"></i></div></div>
+                    <div class="field"><label><i class="fas fa-id-badge"></i> <span id="lblCid">User ID</span> *</label><input type="text" id="inCid" class="inp" placeholder="Masukkan User ID..."></div>
+                </div>
+                <div class="card-btns">
+                    <button class="btn btn-ghost" id="btn3back"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-primary" id="btnUpload"><i class="fas fa-rocket"></i> Upload ke Roblox</button>
+                </div>
+            </div>
+        </section>
 
-    busboy.on("file", function (name, stream, info) {
-        fileName = info.filename || "model.rbxm";
-        var chunks = [];
-        stream.on("data", function (c) {
-            chunks.push(c);
-        });
-        stream.on("end", function () {
-            fileBuffer = Buffer.concat(chunks);
-            console.log("File received:", fileName, fileBuffer.length, "bytes");
-        });
-    });
+        <!-- STEP 4 -->
+        <section class="panel" id="p4"><div class="glass card" id="resultBox"></div></section>
+    </div>
 
-    busboy.on("error", function (e) {
-        console.log("Busboy error:", e.message);
-        res.status(400).json({
-            success: false,
-            message: "File upload error: " + e.message,
-        });
-    });
+    <footer class="glass footer"><span><i class="fas fa-heart"></i> Built for Roblox Developers</span></footer>
+</div>
 
-    busboy.on("finish", function () {
-        console.log("Fields:", JSON.stringify(fields));
-        console.log("File:", fileName, fileBuffer ? fileBuffer.length : 0);
+<!-- LOADING -->
+<div id="loadingOverlay" class="overlay">
+    <div class="glass load-card">
+        <div class="spinner"><div></div><div></div><div></div></div>
+        <h3 id="loadTitle">Uploading...</h3><p id="loadMsg">Mohon tunggu</p>
+        <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+        <span class="prog-pct" id="progPct">0%</span>
+    </div>
+</div>
 
-        if (!fileBuffer || fileBuffer.length === 0) {
-            res.status(400).json({ success: false, message: "File tidak ditemukan atau kosong" });
-            return;
-        }
+<!-- HELP -->
+<div id="helpModal" class="overlay">
+    <div class="glass modal">
+        <div class="modal-head"><h2><i class="fas fa-book-open"></i> Panduan</h2><button class="btn-ico" id="btnCloseHelp"><i class="fas fa-times"></i></button></div>
+        <div class="help-tabs">
+            <button class="htab active" data-t="overview"><i class="fas fa-info-circle"></i> Overview</button>
+            <button class="htab" data-t="apikey"><i class="fas fa-key"></i> API Key</button>
+            <button class="htab" data-t="howto"><i class="fas fa-upload"></i> Upload</button>
+            <button class="htab" data-t="userid"><i class="fas fa-user"></i> User ID</button>
+            <button class="htab" data-t="faq"><i class="fas fa-question"></i> FAQ</button>
+        </div>
+        <div class="help-body">
+            <div class="hpanel active" id="ht-overview">
+                <div class="help-hero"><i class="fas fa-exchange-alt"></i></div>
+                <h3>Apa itu RBXM Converter?</h3>
+                <p>Convert file <b>.rbxm</b> menjadi <b>Asset ID</b> untuk Toolbox Roblox Studio.</p>
+                <div class="flow-visual">
+                    <div class="fv"><div class="fv-i"><i class="fas fa-file"></i></div><span>.rbxm</span></div>
+                    <i class="fas fa-arrow-right fv-arrow"></i>
+                    <div class="fv"><div class="fv-i"><i class="fas fa-cloud-upload-alt"></i></div><span>Upload</span></div>
+                    <i class="fas fa-arrow-right fv-arrow"></i>
+                    <div class="fv"><div class="fv-i"><i class="fas fa-hashtag"></i></div><span>Asset ID</span></div>
+                </div>
+                <div class="info-box blue"><i class="fas fa-shield-alt"></i><div><b>Privasi</b><p>API key TIDAK disimpan.</p></div></div>
+            </div>
+            <div class="hpanel" id="ht-apikey">
+                <h3><i class="fas fa-key"></i> Cara Dapat API Key</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Buka Creator Dashboard</b><p><a href="https://create.roblox.com/credentials" target="_blank">create.roblox.com/credentials</a></p></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Klik CREATE API KEY</b></div></div>
+                    <div class="sl"><div class="sl-n">3</div><div><b>Beri Nama</b><p>Contoh: "RBXM Converter"</p></div></div>
+                    <div class="sl"><div class="sl-n">4</div><div><b>Add API System → Assets</b><p>Di Access Permissions</p></div></div>
+                    <div class="sl"><div class="sl-n">5</div><div><b>Enable Read & Write</b><p>Centang keduanya</p></div></div>
+                    <div class="sl"><div class="sl-n">6</div><div><b>Tambah IP: 0.0.0.0/0</b><p>Di Security → Accepted IP Addresses</p></div></div>
+                    <div class="sl"><div class="sl-n">7</div><div><b>Copy Key!</b><p>⚠️ Tidak bisa dilihat lagi setelah ditutup</p></div></div>
+                </div>
+                <div class="info-box yellow"><i class="fas fa-exclamation-triangle"></i><div><b>Jangan share API key!</b></div></div>
+            </div>
+            <div class="hpanel" id="ht-howto">
+                <h3><i class="fas fa-upload"></i> Cara Upload</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Export dari Studio</b><p>Klik kanan model di Explorer → Save to File → .rbxm</p></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Masukkan API Key</b></div></div>
+                    <div class="sl"><div class="sl-n">3</div><div><b>Upload File .rbxm</b></div></div>
+                    <div class="sl"><div class="sl-n">4</div><div><b>Isi Config & Upload</b></div></div>
+                    <div class="sl"><div class="sl-n">5</div><div><b>Dapat Asset ID!</b></div></div>
+                </div>
+            </div>
+            <div class="hpanel" id="ht-userid">
+                <h3><i class="fas fa-user"></i> Cari User ID</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Buka profil Roblox kamu</b></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Lihat URL</b><p><code>roblox.com/users/<b>123456789</b>/profile</code><br>Angka = User ID</p></div></div>
+                </div>
+                <br>
+                <h3><i class="fas fa-users"></i> Cari Group ID</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Buka group di Roblox</b></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Lihat URL</b><p><code>roblox.com/groups/<b>7654321</b>/nama</code><br>Angka = Group ID</p></div></div>
+                </div>
+            </div>
+            <div class="hpanel" id="ht-faq">
+                <h3><i class="fas fa-question-circle"></i> FAQ</h3>
+                <div class="faq-list">
+                    <div class="faq"><button class="faq-q"><span>File apa yang didukung?</span><i class="fas fa-chevron-down"></i></button><div class="faq-a"><p>.rbxm dan .rbxmx. Max 50MB.</p></div></div>
+                    <div class="faq"><button class="faq-q"><span>API key aman?</span><i class="fas fa-chevron-down"></i></button><div class="faq-a"><p>Ya. Tidak disimpan di server manapun.</p></div></div>
+                    <div class="faq"><button class="faq-q"><span>Upload gagal kenapa?</span><i class="fas fa-chevron-down"></i></button><div class="faq-a"><p>• API key harus punya Assets Read+Write<br>• Tambah IP 0.0.0.0/0 di API key settings<br>• User/Group ID harus benar<br>• File tidak boleh corrupt</p></div></div>
+                    <div class="faq"><button class="faq-q"><span>Asset di mana setelah upload?</span><i class="fas fa-chevron-down"></i></button><div class="faq-a"><p>Search Asset ID di Toolbox Roblox Studio, atau kunjungi link Library yang diberikan.</p></div></div>
+                    <div class="faq"><button class="faq-q"><span>Bisa upload ke Group?</span><i class="fas fa-chevron-down"></i></button><div class="faq-a"><p>Bisa. Ubah Creator Type ke Group dan masukkan Group ID.</p></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-        var apiKey = (fields.apiKey || "").trim();
-        var assetName = (fields.assetName || "").trim();
-        var assetDescription = (fields.assetDescription || "").trim();
-        var creatorId = (fields.creatorId || "").trim();
-        var creatorType = (fields.creatorType || "User").trim();
-
-        if (!apiKey) { res.json({ success: false, message: "API Key diperlukan" }); return; }
-        if (!assetName) { res.json({ success: false, message: "Nama asset diperlukan" }); return; }
-        if (!creatorId) { res.json({ success: false, message: "Creator ID diperlukan" }); return; }
-
-        // Build Roblox request
-        var requestObj = {
-            assetType: "Model",
-            displayName: assetName.substring(0, 50),
-            description: assetDescription.substring(0, 1000),
-            creationContext: { creator: {} },
-        };
-
-        if (creatorType === "Group") {
-            requestObj.creationContext.creator.groupId = creatorId;
-        } else {
-            requestObj.creationContext.creator.userId = creatorId;
-        }
-
-        var boundary = "RBXM" + Date.now();
-        var NL = "\r\n";
-
-        var before = Buffer.from(
-            "--" + boundary + NL +
-            'Content-Disposition: form-data; name="request"' + NL +
-            "Content-Type: application/json" + NL + NL +
-            JSON.stringify(requestObj) + NL +
-            "--" + boundary + NL +
-            'Content-Disposition: form-data; name="fileContent"; filename="' + fileName + '"' + NL +
-            "Content-Type: application/octet-stream" + NL + NL
-        );
-
-        var after = Buffer.from(NL + "--" + boundary + "--" + NL);
-        var fullBody = Buffer.concat([before, fileBuffer, after]);
-
-        console.log("Sending to Roblox:", fullBody.length, "bytes");
-
-        var options = {
-            hostname: "apis.roblox.com",
-            path: "/assets/v1/assets",
-            method: "POST",
-            headers: {
-                "x-api-key": apiKey,
-                "Content-Type": "multipart/form-data; boundary=" + boundary,
-                "Content-Length": fullBody.length,
-            },
-        };
-
-        var rReq = https.request(options, function (rResp) {
-            var chunks = [];
-            rResp.on("data", function (c) { chunks.push(c); });
-            rResp.on("end", function () {
-                var rBody = Buffer.concat(chunks).toString();
-                var rStatus = rResp.statusCode;
-                console.log("Roblox status:", rStatus);
-                console.log("Roblox body:", rBody.substring(0, 500));
-
-                if (rStatus >= 400) {
-                    var msg = "Roblox error (" + rStatus + ")";
-                    if (rStatus === 401) msg = "API Key tidak valid.";
-                    else if (rStatus === 403) msg = "Permission denied. Pastikan API key punya Assets Read+Write dan IP 0.0.0.0/0.";
-                    else if (rStatus === 429) msg = "Rate limited. Tunggu 1 menit.";
-                    else {
-                        try {
-                            var e = JSON.parse(rBody);
-                            msg = e.message || e.error || JSON.stringify(e);
-                        } catch (x) {
-                            msg = rBody.substring(0, 300) || msg;
-                        }
-                    }
-                    res.json({ success: false, message: msg });
-                    return;
-                }
-
-                var data;
-                try { data = JSON.parse(rBody); } catch (e) {
-                    res.json({ success: false, message: "Response tidak valid dari Roblox" });
-                    return;
-                }
-
-                var assetId = findId(data);
-                if (assetId) {
-                    res.json({
-                        success: true, assetId: assetId, message: "Upload berhasil!",
-                        toolboxUrl: "https://www.roblox.com/library/" + assetId,
-                        studioUrl: "rbxassetid://" + assetId,
-                    });
-                    return;
-                }
-
-                if (data.path) {
-                    doPoll(data.path, apiKey, 0, function (aid) {
-                        if (aid) {
-                            res.json({
-                                success: true, assetId: aid, message: "Upload berhasil!",
-                                toolboxUrl: "https://www.roblox.com/library/" + aid,
-                                studioUrl: "rbxassetid://" + aid,
-                            });
-                        } else {
-                            res.json({
-                                success: true, assetId: null,
-                                message: "Upload terkirim, masih diproses. Cek inventory Roblox kamu.",
-                            });
-                        }
-                    });
-                    return;
-                }
-
-                res.json({
-                    success: true, assetId: null,
-                    message: "Upload terkirim. Cek inventory Roblox.",
-                });
-            });
-        });
-
-        rReq.on("error", function (e) {
-            console.log("Roblox error:", e.message);
-            res.json({ success: false, message: "Gagal konek Roblox: " + e.message });
-        });
-
-        rReq.write(fullBody);
-        rReq.end();
-    });
-
-    req.pipe(busboy);
-};
-
-function doPoll(opPath, apiKey, attempt, cb) {
-    if (attempt >= 10) { cb(null); return; }
-    var p = opPath;
-    if (!p.startsWith("/")) p = "/assets/v1/" + p;
-
-    setTimeout(function () {
-        var r = https.request({
-            hostname: "apis.roblox.com", path: p, method: "GET",
-            headers: { "x-api-key": apiKey },
-        }, function (resp) {
-            var d = "";
-            resp.on("data", function (c) { d += c; });
-            resp.on("end", function () {
-                try {
-                    var pd = JSON.parse(d);
-                    if (pd.done === true) { cb(findId(pd)); return; }
-                    if (pd.error) { cb(null); return; }
-                } catch (e) { }
-                doPoll(opPath, apiKey, attempt + 1, cb);
-            });
-        });
-        r.on("error", function () { doPoll(opPath, apiKey, attempt + 1, cb); });
-        r.end();
-    }, 3000);
-}
-
-function findId(obj) {
-    if (!obj) return null;
-    if (obj.assetId) return String(obj.assetId);
-    if (obj.path) { var m = obj.path.match(/assets\/(\d+)/); if (m) return m[1]; }
-    if (obj.response) return findId(obj.response);
-    return null;
-}
+<div id="toasts"></div>
+<script src="/script.js"></script>
+</body>
+</html>
