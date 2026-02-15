@@ -1,297 +1,136 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
+const http = require('http');
 const fs = require('fs');
+const path = require('path');
 
-const app = express();
 const PORT = 3000;
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
-// Upload setup
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+// MIME types
+const MIME = {
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.ico': 'image/x-icon'
+};
 
-const upload = multer({
-    dest: uploadDir,
-    limits: { fileSize: 50 * 1024 * 1024 }
-});
-
-// Validate key
-app.post('/api/validate-key', async (req, res) => {
-    const key = (req.body.apiKey || '').trim();
-    if (!key) return res.json({ valid: false, message: 'API Key kosong' });
-    if (key.length < 10) return res.json({ valid: false, message: 'API Key terlalu pendek' });
-
-    try {
-        const https = require('https');
-        const result = await new Promise((resolve, reject) => {
-            const r = https.request('https://apis.roblox.com/assets/v1/assets?pageSize=1', {
-                method: 'GET',
-                headers: { 'x-api-key': key }
-            }, (resp) => {
-                let d = '';
-                resp.on('data', c => d += c);
-                resp.on('end', () => resolve({ status: resp.statusCode, body: d }));
-            });
-            r.on('error', reject);
-            r.end();
+// Helper: baca body JSON
+function readJSON(req) {
+    return new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', c => body += c);
+        req.on('end', () => {
+            try { resolve(JSON.parse(body)); }
+            catch (e) { resolve({}); }
         });
-
-        if (result.status === 401 || result.status === 403) {
-            return res.json({ valid: false, message: 'API Key invalid atau tidak punya permission Assets' });
-        }
-        return res.json({ valid: true, message: 'API Key valid!' });
-    } catch (e) {
-        return res.json({ valid: true, message: 'Key diterima (validasi penuh saat upload)' });
-    }
-});
-
-// Upload file
-app.post('/api/upload', (req, res) => {
-    const up = upload.single('rbxmFile');
-
-    up(req, res, async (multerErr) => {
-        // Handle multer error
-        if (multerErr) {
-            console.log('Multer error:', multerErr.message);
-            return res.json({ success: false, message: 'File error: ' + multerErr.message });
-        }
-
-        const cleanup = () => {
-            try { if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path); } catch (e) { }
-        };
-
-        try {
-            if (!req.file) {
-                return res.json({ success: false, message: 'File tidak ditemukan. Pilih file .rbxm' });
-            }
-
-            const apiKey = (req.body.apiKey || '').trim();
-            const assetName = (req.body.assetName || '').trim();
-            const assetDescription = (req.body.assetDescription || '').trim();
-            const creatorId = (req.body.creatorId || '').trim();
-            const creatorType = (req.body.creatorType || 'User').trim();
-
-            if (!apiKey) { cleanup(); return res.json({ success: false, message: 'API Key diperlukan' }); }
-            if (!assetName) { cleanup(); return res.json({ success: false, message: 'Nama asset diperlukan' }); }
-            if (!creatorId) { cleanup(); return res.json({ success: false, message: 'Creator ID diperlukan' }); }
-
-            const fileData = fs.readFileSync(req.file.path);
-            const fileName = req.body.originalName || req.file.originalname || 'model.rbxm';
-
-            console.log('--- Upload ---');
-            console.log('File:', fileName, fileData.length, 'bytes');
-            console.log('Asset:', assetName);
-            console.log('Creator:', creatorType, creatorId);
-
-            // Build request JSON
-            const requestObj = {
-                assetType: 'Model',
-                displayName: assetName.substring(0, 50),
-                description: assetDescription.substring(0, 1000),
-                creationContext: {
-                    creator: {}
-                }
-            };
-
-            if (creatorType === 'Group') {
-                requestObj.creationContext.creator.groupId = creatorId;
-            } else {
-                requestObj.creationContext.creator.userId = creatorId;
-            }
-
-            const requestJsonStr = JSON.stringify(requestObj);
-
-            // Build multipart manually with native https
-            const boundary = 'Boundary' + Date.now();
-            const CRLF = '\r\n';
-
-            const beforeFile =
-                '--' + boundary + CRLF +
-                'Content-Disposition: form-data; name="request"' + CRLF +
-                'Content-Type: application/json' + CRLF +
-                CRLF +
-                requestJsonStr + CRLF +
-                '--' + boundary + CRLF +
-                'Content-Disposition: form-data; name="fileContent"; filename="' + fileName + '"' + CRLF +
-                'Content-Type: application/octet-stream' + CRLF +
-                CRLF;
-
-            const afterFile = CRLF + '--' + boundary + '--' + CRLF;
-
-            const bodyBuffer = Buffer.concat([
-                Buffer.from(beforeFile, 'utf-8'),
-                fileData,
-                Buffer.from(afterFile, 'utf-8')
-            ]);
-
-            cleanup(); // file sudah dibaca, hapus
-
-            console.log('Sending to Roblox...', bodyBuffer.length, 'bytes');
-
-            // Send with native https (paling reliable)
-            const https = require('https');
-            const robloxResult = await new Promise((resolve, reject) => {
-                const options = {
-                    hostname: 'apis.roblox.com',
-                    path: '/assets/v1/assets',
-                    method: 'POST',
-                    headers: {
-                        'x-api-key': apiKey,
-                        'Content-Type': 'multipart/form-data; boundary=' + boundary,
-                        'Content-Length': bodyBuffer.length
-                    }
-                };
-
-                const r = https.request(options, (resp) => {
-                    let data = '';
-                    resp.on('data', chunk => data += chunk);
-                    resp.on('end', () => {
-                        resolve({ status: resp.statusCode, body: data });
-                    });
-                });
-
-                r.on('error', (e) => reject(e));
-                r.write(bodyBuffer);
-                r.end();
-            });
-
-            console.log('Roblox status:', robloxResult.status);
-            console.log('Roblox body:', robloxResult.body);
-
-            // Handle non-OK
-            if (robloxResult.status >= 400) {
-                let msg = 'Roblox error (' + robloxResult.status + ')';
-
-                if (robloxResult.status === 401) msg = 'API Key tidak valid.';
-                else if (robloxResult.status === 403) msg = 'Permission denied. Pastikan API key punya Assets Read + Write, dan IP 0.0.0.0/0 di allowed list.';
-                else if (robloxResult.status === 429) msg = 'Rate limited. Tunggu 1 menit.';
-                else {
-                    try {
-                        const e = JSON.parse(robloxResult.body);
-                        msg = e.message || e.error || e.Message || JSON.stringify(e);
-                    } catch (x) {
-                        msg = robloxResult.body.substring(0, 300) || msg;
-                    }
-                }
-
-                return res.json({ success: false, message: msg });
-            }
-
-            // Parse OK response
-            let parsed;
-            try {
-                parsed = JSON.parse(robloxResult.body);
-            } catch (e) {
-                return res.json({ success: false, message: 'Response Roblox tidak bisa diparse' });
-            }
-
-            // Kalau langsung dapat asset
-            let assetId = findAssetId(parsed);
-            if (assetId) {
-                console.log('Direct asset ID:', assetId);
-                return res.json({
-                    success: true,
-                    assetId: assetId,
-                    message: 'Upload berhasil!',
-                    toolboxUrl: 'https://www.roblox.com/library/' + assetId,
-                    studioUrl: 'rbxassetid://' + assetId
-                });
-            }
-
-            // Kalau dapat operation (async)
-            if (parsed.path) {
-                console.log('Got operation:', parsed.path);
-
-                assetId = await pollRoblox(parsed.path, apiKey);
-
-                if (assetId) {
-                    return res.json({
-                        success: true,
-                        assetId: assetId,
-                        message: 'Upload berhasil!',
-                        toolboxUrl: 'https://www.roblox.com/library/' + assetId,
-                        studioUrl: 'rbxassetid://' + assetId
-                    });
-                }
-
-                return res.json({
-                    success: true,
-                    assetId: null,
-                    message: 'Upload terkirim, masih diproses Roblox. Cek inventory kamu dalam 1-5 menit.'
-                });
-            }
-
-            // Fallback
-            return res.json({
-                success: true,
-                assetId: null,
-                message: 'Upload terkirim. Cek inventory Roblox kamu.'
-            });
-
-        } catch (err) {
-            cleanup();
-            console.error('ERROR:', err);
-            return res.json({ success: false, message: 'Server error: ' + err.message });
-        }
+        req.on('error', reject);
     });
-});
-
-// Poll operation
-async function pollRoblox(opPath, apiKey) {
-    const https = require('https');
-
-    let fullPath = opPath;
-    if (fullPath.startsWith('operations/')) {
-        fullPath = '/assets/v1/' + fullPath;
-    } else if (!fullPath.startsWith('/')) {
-        fullPath = '/assets/v1/' + fullPath;
-    }
-
-    console.log('Polling:', fullPath);
-
-    for (let i = 0; i < 15; i++) {
-        await new Promise(r => setTimeout(r, 3000));
-
-        try {
-            const result = await new Promise((resolve, reject) => {
-                const r = https.request({
-                    hostname: 'apis.roblox.com',
-                    path: fullPath,
-                    method: 'GET',
-                    headers: { 'x-api-key': apiKey }
-                }, (resp) => {
-                    let d = '';
-                    resp.on('data', c => d += c);
-                    resp.on('end', () => resolve({ status: resp.statusCode, body: d }));
-                });
-                r.on('error', reject);
-                r.end();
-            });
-
-            console.log('Poll', i + 1, ':', result.body.substring(0, 200));
-
-            const data = JSON.parse(result.body);
-
-            if (data.done === true && data.response) {
-                return findAssetId(data.response) || findAssetId(data);
-            }
-
-            if (data.error) {
-                console.log('Poll got error:', data.error);
-                return null;
-            }
-        } catch (e) {
-            console.log('Poll error:', e.message);
-        }
-    }
-
-    return null;
 }
 
-// Extract asset ID from various response formats
+// Helper: parse multipart
+function parseMultipart(req) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        req.on('data', c => chunks.push(c));
+        req.on('end', () => {
+            try {
+                const buf = Buffer.concat(chunks);
+                const contentType = req.headers['content-type'] || '';
+                const boundaryMatch = contentType.match(/boundary=(.+)/);
+                if (!boundaryMatch) return reject(new Error('No boundary'));
+
+                const boundary = boundaryMatch[1];
+                const result = { fields: {}, file: null };
+
+                const raw = buf.toString('binary');
+                const parts = raw.split('--' + boundary).filter(p => p && p !== '--\r\n' && p.trim() !== '--');
+
+                for (const part of parts) {
+                    if (part.trim() === '--' || part.trim() === '') continue;
+
+                    const headerEnd = part.indexOf('\r\n\r\n');
+                    if (headerEnd === -1) continue;
+
+                    const header = part.substring(0, headerEnd);
+                    const content = part.substring(headerEnd + 4);
+                    const cleanContent = content.replace(/\r\n$/, '');
+
+                    const nameMatch = header.match(/name="([^"]+)"/);
+                    const filenameMatch = header.match(/filename="([^"]+)"/);
+
+                    if (!nameMatch) continue;
+                    const name = nameMatch[1];
+
+                    if (filenameMatch) {
+                        const filename = filenameMatch[1];
+                        const fileStart = buf.indexOf('\r\n\r\n', buf.indexOf(name)) + 4;
+                        const nextBoundary = buf.indexOf(Buffer.from('\r\n--' + boundary), fileStart);
+                        const fileBuffer = buf.slice(fileStart, nextBoundary);
+
+                        const savePath = path.join(UPLOAD_DIR, Date.now() + '-' + filename);
+                        fs.writeFileSync(savePath, fileBuffer);
+                        result.file = { name: filename, path: savePath, size: fileBuffer.length };
+                    } else {
+                        result.fields[name] = cleanContent;
+                    }
+                }
+                resolve(result);
+            } catch (e) {
+                reject(e);
+            }
+        });
+        req.on('error', reject);
+    });
+}
+
+// Helper: https request
+function httpsRequest(options, body) {
+    return new Promise((resolve, reject) => {
+        const https = require('https');
+        const req = https.request(options, (resp) => {
+            let data = '';
+            resp.on('data', c => data += c);
+            resp.on('end', () => resolve({ status: resp.statusCode, body: data }));
+        });
+        req.on('error', reject);
+        if (body) req.write(body);
+        req.end();
+    });
+}
+
+function sendJSON(res, statusCode, obj) {
+    const str = JSON.stringify(obj);
+    res.writeHead(statusCode, {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(str)
+    });
+    res.end(str);
+}
+
+function sendFile(res, filePath) {
+    const ext = path.extname(filePath);
+    const mime = MIME[ext] || 'application/octet-stream';
+    try {
+        const data = fs.readFileSync(filePath);
+        res.writeHead(200, { 'Content-Type': mime });
+        res.end(data);
+    } catch (e) {
+        // fallback ke index.html
+        try {
+            const html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'));
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(html);
+        } catch (e2) {
+            res.writeHead(404);
+            res.end('Not found');
+        }
+    }
+}
+
 function findAssetId(obj) {
     if (!obj) return null;
     if (obj.assetId) return String(obj.assetId);
@@ -303,22 +142,236 @@ function findAssetId(obj) {
     return null;
 }
 
-// Catch all
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ================================
+// SERVER
+// ================================
+const server = http.createServer(async (req, res) => {
+    const url = req.url.split('?')[0];
+    const method = req.method;
+
+    console.log(method, url);
+
+    try {
+        // ---- VALIDATE KEY ----
+        if (url === '/api/validate-key' && method === 'POST') {
+            const body = await readJSON(req);
+            const key = (body.apiKey || '').trim();
+
+            if (!key) return sendJSON(res, 200, { valid: false, message: 'API Key kosong' });
+
+            try {
+                const r = await httpsRequest({
+                    hostname: 'apis.roblox.com',
+                    path: '/assets/v1/assets?pageSize=1',
+                    method: 'GET',
+                    headers: { 'x-api-key': key }
+                });
+
+                if (r.status === 401 || r.status === 403) {
+                    return sendJSON(res, 200, { valid: false, message: 'API Key invalid atau tidak punya permission Assets' });
+                }
+                return sendJSON(res, 200, { valid: true, message: 'API Key valid!' });
+            } catch (e) {
+                return sendJSON(res, 200, { valid: true, message: 'Key diterima' });
+            }
+        }
+
+        // ---- UPLOAD ----
+        if (url === '/api/upload' && method === 'POST') {
+            let parsed;
+            try {
+                parsed = await parseMultipart(req);
+            } catch (e) {
+                console.error('Parse error:', e.message);
+                return sendJSON(res, 200, { success: false, message: 'Gagal membaca file: ' + e.message });
+            }
+
+            const cleanup = () => {
+                try { if (parsed.file && fs.existsSync(parsed.file.path)) fs.unlinkSync(parsed.file.path); } catch (e) { }
+            };
+
+            if (!parsed.file) {
+                return sendJSON(res, 200, { success: false, message: 'File tidak ditemukan' });
+            }
+
+            const apiKey = (parsed.fields.apiKey || '').trim();
+            const assetName = (parsed.fields.assetName || '').trim();
+            const assetDescription = (parsed.fields.assetDescription || '').trim();
+            const creatorId = (parsed.fields.creatorId || '').trim();
+            const creatorType = (parsed.fields.creatorType || 'User').trim();
+
+            if (!apiKey) { cleanup(); return sendJSON(res, 200, { success: false, message: 'API Key diperlukan' }); }
+            if (!assetName) { cleanup(); return sendJSON(res, 200, { success: false, message: 'Nama asset diperlukan' }); }
+            if (!creatorId) { cleanup(); return sendJSON(res, 200, { success: false, message: 'Creator ID diperlukan' }); }
+
+            console.log('--- UPLOAD ---');
+            console.log('File:', parsed.file.name, parsed.file.size, 'bytes');
+            console.log('Asset:', assetName, '| Creator:', creatorType, creatorId);
+
+            // Baca file
+            const fileBuffer = fs.readFileSync(parsed.file.path);
+            cleanup();
+
+            // Build request
+            const requestObj = {
+                assetType: 'Model',
+                displayName: assetName.substring(0, 50),
+                description: assetDescription.substring(0, 1000),
+                creationContext: { creator: {} }
+            };
+
+            if (creatorType === 'Group') {
+                requestObj.creationContext.creator.groupId = creatorId;
+            } else {
+                requestObj.creationContext.creator.userId = creatorId;
+            }
+
+            // Build multipart
+            const boundary = 'RBXBoundary' + Date.now();
+            const NL = '\r\n';
+
+            const beforeFile = Buffer.from(
+                '--' + boundary + NL +
+                'Content-Disposition: form-data; name="request"' + NL +
+                'Content-Type: application/json' + NL +
+                NL +
+                JSON.stringify(requestObj) + NL +
+                '--' + boundary + NL +
+                'Content-Disposition: form-data; name="fileContent"; filename="' + parsed.file.name + '"' + NL +
+                'Content-Type: application/octet-stream' + NL +
+                NL,
+                'utf-8'
+            );
+
+            const afterFile = Buffer.from(NL + '--' + boundary + '--' + NL, 'utf-8');
+            const fullBody = Buffer.concat([beforeFile, fileBuffer, afterFile]);
+
+            console.log('Sending to Roblox...', fullBody.length, 'bytes');
+
+            // Send
+            let rResult;
+            try {
+                rResult = await httpsRequest({
+                    hostname: 'apis.roblox.com',
+                    path: '/assets/v1/assets',
+                    method: 'POST',
+                    headers: {
+                        'x-api-key': apiKey,
+                        'Content-Type': 'multipart/form-data; boundary=' + boundary,
+                        'Content-Length': fullBody.length
+                    }
+                }, fullBody);
+            } catch (e) {
+                console.error('Roblox request failed:', e.message);
+                return sendJSON(res, 200, { success: false, message: 'Gagal konek ke Roblox: ' + e.message });
+            }
+
+            console.log('Roblox:', rResult.status, rResult.body.substring(0, 300));
+
+            // Error response
+            if (rResult.status >= 400) {
+                let msg = 'Roblox error (' + rResult.status + ')';
+                if (rResult.status === 401) msg = 'API Key tidak valid.';
+                else if (rResult.status === 403) msg = 'Permission denied. Pastikan API key punya Assets Read+Write dan IP 0.0.0.0/0.';
+                else if (rResult.status === 429) msg = 'Rate limited. Tunggu 1 menit.';
+                else {
+                    try { const e = JSON.parse(rResult.body); msg = e.message || e.error || JSON.stringify(e); }
+                    catch (x) { msg = rResult.body.substring(0, 200) || msg; }
+                }
+                return sendJSON(res, 200, { success: false, message: msg });
+            }
+
+            // Parse response
+            let data;
+            try { data = JSON.parse(rResult.body); }
+            catch (e) { return sendJSON(res, 200, { success: false, message: 'Response Roblox tidak valid' }); }
+
+            // Direct asset ID
+            let assetId = findAssetId(data);
+            if (assetId) {
+                return sendJSON(res, 200, {
+                    success: true, assetId: assetId, message: 'Upload berhasil!',
+                    toolboxUrl: 'https://www.roblox.com/library/' + assetId,
+                    studioUrl: 'rbxassetid://' + assetId
+                });
+            }
+
+            // Async operation - poll
+            if (data.path) {
+                console.log('Polling operation:', data.path);
+
+                let pollPath = data.path;
+                if (!pollPath.startsWith('/')) pollPath = '/assets/v1/' + pollPath;
+
+                for (let i = 0; i < 15; i++) {
+                    await sleep(3000);
+                    try {
+                        const pr = await httpsRequest({
+                            hostname: 'apis.roblox.com',
+                            path: pollPath,
+                            method: 'GET',
+                            headers: { 'x-api-key': apiKey }
+                        });
+                        console.log('Poll', i + 1, ':', pr.body.substring(0, 200));
+                        const pd = JSON.parse(pr.body);
+
+                        if (pd.done === true) {
+                            assetId = findAssetId(pd);
+                            if (assetId) {
+                                return sendJSON(res, 200, {
+                                    success: true, assetId: assetId, message: 'Upload berhasil!',
+                                    toolboxUrl: 'https://www.roblox.com/library/' + assetId,
+                                    studioUrl: 'rbxassetid://' + assetId
+                                });
+                            }
+                            break;
+                        }
+                        if (pd.error) break;
+                    } catch (e) { console.log('Poll err:', e.message); }
+                }
+            }
+
+            return sendJSON(res, 200, {
+                success: true, assetId: null,
+                message: 'Upload terkirim, sedang diproses. Cek inventory Roblox kamu.'
+            });
+        }
+
+        // ---- STATIC FILES ----
+        if (url === '/' || url === '') {
+            return sendFile(res, path.join(PUBLIC_DIR, 'index.html'));
+        }
+
+        const filePath = path.join(PUBLIC_DIR, url);
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            return sendFile(res, filePath);
+        }
+
+        // Fallback to index.html
+        return sendFile(res, path.join(PUBLIC_DIR, 'index.html'));
+
+    } catch (err) {
+        console.error('FATAL ERROR:', err);
+        sendJSON(res, 200, { success: false, message: 'Server error: ' + err.message });
+    }
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-    console.error('Global error:', err);
-    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
-});
-
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log('');
-    console.log('=================================');
+    console.log('=============================');
     console.log('  RBXM Converter READY');
     console.log('  http://localhost:' + PORT);
-    console.log('=================================');
+    console.log('=============================');
     console.log('');
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error('PORT ' + PORT + ' sudah dipakai!');
+        console.error('Coba: kill process di port itu, atau ganti PORT di server.js');
+    } else {
+        console.error('Server error:', err);
+    }
 });
