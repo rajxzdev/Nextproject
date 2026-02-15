@@ -1,9 +1,7 @@
 {
   "name": "rbxm-converter",
   "version": "1.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {}
+  "dependencies": {
+    "busboy": "^1.6.0"
+  }
 }
