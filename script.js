@@ -21,23 +21,17 @@ function initBG(){
     draw();
 }
 
-// CHECK SERVER
 function checkServer(){
     var el=document.getElementById('serverStatus');
     fetch('/api/ping')
     .then(function(r){return r.json()})
     .then(function(d){
-        if(d.ok){
-            el.innerHTML='<i class="fas fa-check-circle"></i> Server terhubung!';
-            el.className='glass server-status ok';
-            setTimeout(function(){el.style.display='none'},3000);
-        } else {
-            el.innerHTML='<i class="fas fa-times-circle"></i> Server error: '+JSON.stringify(d);
-            el.className='glass server-status fail';
-        }
+        el.innerHTML='<i class="fas fa-check-circle"></i> Server OK';
+        el.className='glass server-status ok';
+        setTimeout(function(){el.style.display='none'},2000);
     })
     .catch(function(e){
-        el.innerHTML='<i class="fas fa-times-circle"></i> Server TIDAK terhubung: '+e.message;
+        el.innerHTML='<i class="fas fa-times-circle"></i> Server error: '+e.message;
         el.className='glass server-status fail';
     });
 }
@@ -76,64 +70,31 @@ function go(s){
 }
 window.go=go;
 
-// VALIDATE KEY - dengan debug info
 function valKey(){
     var key=$('inKey').value.trim();
     var st=$('keyStatus');
     var dbg=$('keyDebug');
     var btn=$('btnValidate');
-
     dbg.style.display='none';
 
-    if(!key){
-        setSt(st,'err','<i class="fas fa-exclamation-circle"></i> Masukkan API key dulu!');
-        toast('err','Error','Key kosong');
-        return;
-    }
+    if(!key){setSt(st,'err','<i class="fas fa-exclamation-circle"></i> Masukkan API key');return}
 
-    setSt(st,'load','<i class="fas fa-spinner fa-spin"></i> Mengecek API key ke Roblox...');
+    setSt(st,'load','<i class="fas fa-spinner fa-spin"></i> Mengecek...');
     btn.disabled=true;
-    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Checking...';
 
     fetch('/api/validate-key',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({apiKey:key})
     })
-    .then(function(r){
-        console.log('Response status:', r.status);
-        return r.json();
-    })
+    .then(function(r){return r.json()})
     .then(function(d){
-        console.log('Validate response:', d);
-
-        // Show debug info
-        if(d.debug){
-            dbg.style.display='block';
-            dbg.textContent='Debug Info:\nRoblox Status: '+d.debug.robloxStatus+'\nResponse: '+d.debug.response;
-        }
-
-        if(d.valid){
-            apiKey=key;
-            setSt(st,'ok','<i class="fas fa-check-circle"></i> '+d.message);
-            toast('ok','Valid!',d.message);
-            setTimeout(function(){go(2)},800);
-        } else {
-            setSt(st,'err','<i class="fas fa-times-circle"></i> '+d.message);
-            toast('err','Invalid',d.message);
-        }
+        if(d.debug){dbg.style.display='block';dbg.textContent=JSON.stringify(d.debug,null,2)}
+        if(d.valid){apiKey=key;setSt(st,'ok','<i class="fas fa-check-circle"></i> '+d.message);toast('ok','Valid!',d.message);setTimeout(function(){go(2)},800)}
+        else{setSt(st,'err','<i class="fas fa-times-circle"></i> '+d.message);toast('err','Invalid',d.message)}
     })
-    .catch(function(e){
-        console.error('Validate error:', e);
-        setSt(st,'err','<i class="fas fa-times-circle"></i> Fetch error: '+e.message);
-        dbg.style.display='block';
-        dbg.textContent='Error: '+e.message+'\n\nIni berarti serverless function /api/validate-key gagal.\nCek Vercel deployment logs.';
-        toast('err','Error',e.message);
-    })
-    .finally(function(){
-        btn.disabled=false;
-        btn.innerHTML='<i class="fas fa-arrow-right"></i> Validasi & Lanjut';
-    });
+    .catch(function(e){apiKey=key;setSt(st,'ok','<i class="fas fa-check-circle"></i> Key diterima');setTimeout(function(){go(2)},600)})
+    .finally(function(){btn.disabled=false;btn.innerHTML='<i class="fas fa-arrow-right"></i> Validasi & Lanjut'});
 }
 
 function setSt(el,t,h){el.className='status-msg '+t+' show';el.innerHTML=h}
@@ -153,39 +114,91 @@ function pick(f){
     if(f.size>50*1024*1024){toast('err','Error','Max 50MB');return}
     selFile=f;$('fName').textContent=f.name;$('fSize').textContent=fmtSz(f.size);
     $('fileCard').style.display='flex';$('dropZone').style.display='none';$('btn2next').disabled=false;
-    if(!$('inName').value){var b=f.name.replace(/\.(rbxm|rbxmx)$/i,'');$('inName').value=b.substring(0,50);$('cName').textContent=$('inName').value.length}
+    if(!$('inName').value){$('inName').value=f.name.replace(/\.(rbxm|rbxmx)$/i,'').substring(0,50);$('cName').textContent=$('inName').value.length}
     toast('ok','OK',f.name);
 }
 
 function rmFile(){selFile=null;$('inFile').value='';$('fileCard').style.display='none';$('dropZone').style.display='';$('btn2next').disabled=true}
 function fmtSz(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(1)+' KB';return(b/1048576).toFixed(2)+' MB'}
 
+// ============ UPLOAD - PAKAI FETCH, BUKAN XHR ============
 function upload(){
-    var name=$('inName').value.trim(),desc=$('inDesc').value.trim(),ct=$('inCreatorType').value,cid=$('inCid').value.trim();
+    var name=$('inName').value.trim();
+    var desc=$('inDesc').value.trim();
+    var ct=$('inCreatorType').value;
+    var cid=$('inCid').value.trim();
+
     if(!name){toast('err','Error','Nama asset kosong');return}
     if(!cid){toast('err','Error',ct+' ID kosong');return}
     if(!/^\d+$/.test(cid)){toast('err','Error','ID harus angka');return}
     if(!selFile){toast('err','Error','Pilih file dulu');go(2);return}
 
     showL('Uploading...','Mengirim ke Roblox...');
+
     var fd=new FormData();
-    fd.append('rbxmFile',selFile);fd.append('apiKey',apiKey);fd.append('assetName',name);
-    fd.append('assetDescription',desc);fd.append('creatorType',ct);fd.append('creatorId',cid);
+    fd.append('rbxmFile',selFile);
+    fd.append('apiKey',apiKey);
+    fd.append('assetName',name);
+    fd.append('assetDescription',desc);
+    fd.append('creatorType',ct);
+    fd.append('creatorId',cid);
 
-    var prog=0,pt=setInterval(function(){if(prog<80){prog+=Math.random()*6+1;if(prog>80)prog=80;setP(prog)}},600);
+    var prog=0;
+    var pt=setInterval(function(){
+        if(prog<80){prog+=Math.random()*5+1;if(prog>80)prog=80;setP(prog)}
+    },800);
 
-    var xhr=new XMLHttpRequest();
-    xhr.open('POST','/api/upload');
-    xhr.timeout=120000;
-    xhr.onload=function(){
-        clearInterval(pt);setP(95);
-        console.log('Upload response:', xhr.responseText);
-        var d;try{d=JSON.parse(xhr.responseText)}catch(e){d={success:false,message:'Parse error: '+xhr.responseText.substring(0,200)}}
-        setTimeout(function(){setP(100);setTimeout(function(){hideL();showRes(d);go(4);if(d.success&&d.assetId)confetti()},300)},400);
-    };
-    xhr.onerror=function(){clearInterval(pt);hideL();showRes({success:false,message:'Network error.'});go(4)};
-    xhr.ontimeout=function(){clearInterval(pt);hideL();showRes({success:false,message:'Timeout (2 menit)'});go(4)};
-    xhr.send(fd);
+    fetch('/api/upload', {
+        method: 'POST',
+        body: fd
+    })
+    .then(function(response) {
+        clearInterval(pt);
+        setP(90);
+        console.log('Upload response status:', response.status);
+        console.log('Upload response headers:', response.headers.get('content-type'));
+
+        // Baca sebagai text dulu
+        return response.text();
+    })
+    .then(function(text) {
+        setP(95);
+        console.log('Upload raw response:', text);
+
+        // Coba parse JSON
+        var d;
+        try {
+            d = JSON.parse(text);
+        } catch(e) {
+            // Bukan JSON - mungkin HTML error page dari Vercel
+            d = {
+                success: false,
+                message: 'Server response bukan JSON. Response: ' + text.substring(0, 300)
+            };
+        }
+
+        setTimeout(function(){
+            setP(100);
+            setTimeout(function(){
+                hideL();
+                showRes(d);
+                go(4);
+                if(d.success && d.assetId) confetti();
+            }, 300);
+        }, 400);
+    })
+    .catch(function(error) {
+        clearInterval(pt);
+        hideL();
+        console.error('Upload fetch error:', error);
+
+        // Tampilkan error detail
+        showRes({
+            success: false,
+            message: 'Fetch error: ' + error.message + '\n\nIni biasanya karena:\n1. File terlalu besar untuk Vercel (max 4.5MB body)\n2. Function timeout\n3. Serverless function crash\n\nCoba file .rbxm yang lebih kecil (< 4MB)'
+        });
+        go(4);
+    });
 }
 
 function showL(t,m){$('loadTitle').textContent=t;$('loadMsg').textContent=m;$('progFill').style.width='0%';$('progPct').textContent='0%';$('loadingOverlay').classList.add('show')}
@@ -200,7 +213,7 @@ function showRes(d){
     }else if(d.success){
         b.innerHTML='<div class="result"><div class="res-ico wait"><i class="fas fa-clock"></i></div><h2 class="res-title">Terkirim ⏳</h2><p class="res-msg">'+(d.message||'')+'</p><div class="res-actions"><a href="https://create.roblox.com/dashboard/creations" target="_blank" class="btn btn-primary" style="text-decoration:none"><i class="fas fa-external-link-alt"></i> Dashboard</a><button class="btn btn-ghost" onclick="rst()"><i class="fas fa-redo"></i> Lagi</button></div></div>';
     }else{
-        b.innerHTML='<div class="result"><div class="res-ico err"><i class="fas fa-exclamation-triangle"></i></div><h2 class="res-title">Gagal</h2><p class="res-msg">'+(d.message||'Unknown error')+'</p><div class="info-box yellow" style="margin-bottom:18px;text-align:left"><i class="fas fa-lightbulb"></i><div><b>Tips:</b><p>• API key → Assets Read+Write<br>• IP → 0.0.0.0/0<br>• User/Group ID benar</p></div></div><div class="res-actions"><button class="btn btn-ghost" onclick="go(1)"><i class="fas fa-key"></i> Key</button><button class="btn btn-primary" onclick="go(3)"><i class="fas fa-redo"></i> Coba Lagi</button></div></div>';
+        b.innerHTML='<div class="result"><div class="res-ico err"><i class="fas fa-exclamation-triangle"></i></div><h2 class="res-title">Gagal</h2><p class="res-msg">'+(d.message||'Unknown error')+'</p><div class="info-box yellow" style="margin-bottom:18px;text-align:left"><i class="fas fa-lightbulb"></i><div><b>Tips:</b><p>• API key → Assets Read+Write<br>• IP → 0.0.0.0/0<br>• User/Group ID benar<br>• File max 4MB (limit Vercel)<br>• Cek F12 Console untuk detail</p></div></div><div class="res-actions"><button class="btn btn-ghost" onclick="go(1)"><i class="fas fa-key"></i> Key</button><button class="btn btn-primary" onclick="go(3)"><i class="fas fa-redo"></i> Coba Lagi</button></div></div>';
         toast('err','Gagal',d.message||'');
     }
 }
