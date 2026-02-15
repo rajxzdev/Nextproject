@@ -1,247 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RBXM → Toolbox Converter</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBXM → Asset ID Converter</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
-  <div class="galaxy-bg">
-    <canvas id="starsCanvas"></canvas>
-    <div class="nebula n1"></div>
-    <div class="nebula n2"></div>
-    <div class="nebula n3"></div>
-  </div>
+<canvas id="bgCanvas"></canvas>
 
-  <!-- Connection Status Banner -->
-  <div class="conn-banner" id="connBanner" style="display:none">
-    <i class="fas fa-exclamation-triangle"></i>
-    <span id="connMsg">Server not connected</span>
-    <button onclick="checkServer()" class="conn-retry"><i class="fas fa-redo"></i> Retry</button>
-  </div>
+<div class="app">
 
-  <!-- Help Modal -->
-  <div class="modal-overlay" id="helpModal">
-    <div class="modal glass-card">
-      <div class="modal-header">
-        <h2><i class="fas fa-life-ring"></i> Help Center</h2>
-        <button class="modal-close-btn" onclick="closeHelp()"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="modal-body">
-        <div class="help-nav">
-          <button class="help-nav-btn active" data-tab="guide"><i class="fas fa-book-open"></i><span>Guide</span></button>
-          <button class="help-nav-btn" data-tab="apikey"><i class="fas fa-key"></i><span>API Key</span></button>
-          <button class="help-nav-btn" data-tab="userid"><i class="fas fa-id-card"></i><span>User ID</span></button>
-          <button class="help-nav-btn" data-tab="trouble"><i class="fas fa-wrench"></i><span>Troubleshoot</span></button>
-          <button class="help-nav-btn" data-tab="faq"><i class="fas fa-question"></i><span>FAQ</span></button>
+    <!-- HEADER -->
+    <header class="glass header">
+        <div class="header-left">
+            <div class="logo"><i class="fas fa-cube"></i></div>
+            <div>
+                <h1>RBXM Converter</h1>
+                <span class="sub">.rbxm → Roblox Asset ID</span>
+            </div>
         </div>
-
-        <div class="help-panel active" id="panel-guide">
-          <div class="guide-flow">
-            <div class="flow-step"><div class="flow-num">1</div><div class="flow-body"><h4>Verify Your Identity</h4><p>Enter your Roblox <strong>User ID</strong> or <strong>Group ID</strong>. We verify it's real with Roblox API and show your profile.</p></div></div>
-            <div class="flow-line"></div>
-            <div class="flow-step"><div class="flow-num">2</div><div class="flow-body"><h4>Enter Your API Key</h4><p>Paste your personal <strong>Open Cloud API Key</strong>. Each user must use their own key. We validate it has correct permissions.</p></div></div>
-            <div class="flow-line"></div>
-            <div class="flow-step"><div class="flow-num">3</div><div class="flow-body"><h4>Upload RBXM File</h4><p>Drag & drop or click to select your <strong>.rbxm</strong> or <strong>.rbxmx</strong> file (max 50MB).</p></div></div>
-            <div class="flow-line"></div>
-            <div class="flow-step"><div class="flow-num">4</div><div class="flow-body"><h4>Get Asset ID</h4><p>Receive <strong>Asset ID</strong>, <strong>Toolbox URL</strong>, and <strong>rbxassetid://</strong> ready to use in Studio!</p></div></div>
-          </div>
-        </div>
-
-        <div class="help-panel" id="panel-apikey">
-          <div class="info-card warn-card"><i class="fas fa-shield-alt"></i><div><h4>Your Key = Your Responsibility</h4><p>Each user uses their own API key. Keys are stored only in YOUR browser. Never shared or logged.</p></div></div>
-          <div class="steps-list">
-            <div class="step-item"><span class="step-badge">1</span><div><h4>Go to Creator Dashboard</h4><p><a href="https://create.roblox.com/dashboard/credentials" target="_blank" class="link">create.roblox.com/dashboard/credentials</a></p></div></div>
-            <div class="step-item"><span class="step-badge">2</span><div><h4>Click "CREATE API KEY"</h4><p>Name it something like "RBXM Converter"</p></div></div>
-            <div class="step-item"><span class="step-badge">3</span><div><h4>Add "Assets" API System</h4><p>Enable <strong>Read</strong> and <strong>Write</strong> permissions</p></div></div>
-            <div class="step-item"><span class="step-badge">4</span><div><h4>Set IP Addresses</h4><p>Add server IP or <code>0.0.0.0/0</code> for all IPs</p></div></div>
-            <div class="step-item"><span class="step-badge">5</span><div><h4>Copy Key Immediately</h4><p>You can only see it <strong>once</strong>!</p></div></div>
-          </div>
-        </div>
-
-        <div class="help-panel" id="panel-userid">
-          <div class="id-method"><div class="id-icon"><i class="fas fa-user"></i></div><div><h4>User ID</h4><p>Go to your Roblox profile. Number in URL is your ID:</p><div class="code-block">roblox.com/users/<span class="hl">123456789</span>/profile</div></div></div>
-          <div class="id-method"><div class="id-icon grp"><i class="fas fa-users"></i></div><div><h4>Group ID</h4><p>Go to your group page. Number in URL:</p><div class="code-block">roblox.com/groups/<span class="hl">7654321</span>/Name</div></div></div>
-        </div>
-
-        <div class="help-panel" id="panel-trouble">
-          <div class="trouble-item"><h4><i class="fas fa-wifi"></i> "Connection Failed"</h4><p>1. Make sure server is running: <code>node server.js</code><br>2. Check terminal for errors<br>3. Visit <code>http://localhost:3000/api/health</code><br>4. Run <code>npm install</code> if dependencies missing</p></div>
-          <div class="trouble-item"><h4><i class="fas fa-key"></i> "Invalid API Key"</h4><p>1. Key copied correctly? No extra spaces<br>2. Key has "Assets" permission with Read+Write<br>3. Key not expired/deleted on dashboard</p></div>
-          <div class="trouble-item"><h4><i class="fas fa-ban"></i> "403 Forbidden"</h4><p>Your server's IP is not in the API key's whitelist.<br>Fix: Add <code>0.0.0.0/0</code> to accepted IPs in Creator Dashboard.</p></div>
-          <div class="trouble-item"><h4><i class="fas fa-clock"></i> "Still Processing"</h4><p>Large files take time. Wait 1-2 minutes then check your Roblox Inventory → Models.</p></div>
-          <div class="trouble-item"><h4><i class="fas fa-bug"></i> Still Not Working?</h4><p>Open browser DevTools (F12) → Console tab for errors. Also check terminal running the server.</p></div>
-        </div>
-
-        <div class="help-panel" id="panel-faq">
-          <div class="faq-item"><div class="faq-q"><i class="fas fa-chevron-right"></i> Is my API key safe?</div><p>Yes. Stored only in YOUR browser localStorage. Server uses it for the single request only.</p></div>
-          <div class="faq-item"><div class="faq-q"><i class="fas fa-chevron-right"></i> What files supported?</div><p>.rbxm and .rbxmx up to 50MB.</p></div>
-          <div class="faq-item"><div class="faq-q"><i class="fas fa-chevron-right"></i> Can I upload to Group?</div><p>Yes. Select "Group" type and enter Group ID.</p></div>
-          <div class="faq-item"><div class="faq-q"><i class="fas fa-chevron-right"></i> Where does asset appear?</div><p>Your Roblox Inventory → Models, and Toolbox in Studio.</p></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- App -->
-  <div class="app-wrapper">
-    <header class="app-header">
-      <div class="header-left">
-        <div class="logo-cube"><i class="fas fa-cube"></i></div>
-        <div>
-          <h1 class="logo-title">RBXM <span class="grad">Converter</span></h1>
-          <p class="logo-sub">Upload RBXM → Get Toolbox Asset ID</p>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="server-dot" id="serverDot" title="Checking server..."></div>
-        <button class="glass-btn help-btn" onclick="openHelp()"><i class="fas fa-question-circle"></i><span>Help</span></button>
-      </div>
+        <button class="btn btn-ghost" id="btnHelp"><i class="fas fa-question-circle"></i> Help</button>
     </header>
 
-    <main class="app-main">
+    <!-- STEPS BAR -->
+    <div class="glass steps-bar">
+        <div class="stp active" data-s="1"><div class="stp-c"><i class="fas fa-key"></i></div><span>API Key</span></div>
+        <div class="stp-line" id="line1"></div>
+        <div class="stp" data-s="2"><div class="stp-c"><i class="fas fa-upload"></i></div><span>File</span></div>
+        <div class="stp-line" id="line2"></div>
+        <div class="stp" data-s="3"><div class="stp-c"><i class="fas fa-cog"></i></div><span>Config</span></div>
+        <div class="stp-line" id="line3"></div>
+        <div class="stp" data-s="4"><div class="stp-c"><i class="fas fa-check"></i></div><span>Done</span></div>
+    </div>
 
-      <!-- Step 1 -->
-      <section class="card glass-card anim-up" style="--d:.1s">
-        <div class="card-head">
-          <div class="card-icon"><i class="fas fa-user-check"></i></div>
-          <div><h2>Step 1: Verify Identity</h2><p class="card-desc">Confirm your Roblox account</p></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group grow">
-            <label><i class="fas fa-id-badge"></i> Creator ID <span class="req">*</span></label>
-            <input type="text" id="creatorId" class="glass-input" placeholder="User ID or Group ID...">
-          </div>
-          <div class="form-group shrink">
-            <label><i class="fas fa-tag"></i> Type</label>
-            <select id="creatorType" class="glass-input glass-select">
-              <option value="User">User</option>
-              <option value="Group">Group</option>
-            </select>
-          </div>
-        </div>
-        <button class="action-btn primary-btn" id="verifyBtn" onclick="verifyCreator()">
-          <i class="fas fa-search"></i><span>Verify ID</span><div class="btn-shine"></div>
-        </button>
-        <div class="profile-card" id="profileCard" style="display:none">
-          <img id="profileAvatar" class="profile-avatar" src="" alt="">
-          <div class="profile-info">
-            <div class="profile-name" id="profileName"></div>
-            <div class="profile-sub" id="profileSub"></div>
-            <div class="profile-meta" id="profileMeta"></div>
-          </div>
-          <div class="profile-badge" id="profileBadge"><i class="fas fa-check-circle"></i> Verified</div>
-        </div>
-        <div id="verifyStatus" class="status-msg"></div>
-      </section>
+    <!-- PANELS -->
+    <div class="panels">
 
-      <!-- Step 2 -->
-      <section class="card glass-card anim-up" style="--d:.2s">
-        <div class="card-head">
-          <div class="card-icon"><i class="fas fa-key"></i></div>
-          <div><h2>Step 2: Your API Key</h2><p class="card-desc">Personal Open Cloud API key</p></div>
-        </div>
-        <div class="info-card sec-card"><i class="fas fa-lock"></i><p>Your key is stored <strong>only in your browser</strong>. Never saved on server.</p></div>
-        <div class="form-group">
-          <label><i class="fas fa-key"></i> API Key <span class="req">*</span></label>
-          <div class="input-wrap">
-            <input type="password" id="apiKey" class="glass-input" placeholder="Paste your API key..." autocomplete="off">
-            <button class="input-icon-btn" onclick="toggleEye()"><i class="fas fa-eye" id="eyeIcon"></i></button>
-          </div>
-          <div class="form-hint"><i class="fas fa-external-link-alt"></i> Get from <a href="https://create.roblox.com/dashboard/credentials" target="_blank" class="link">Creator Dashboard</a></div>
-        </div>
-        <button class="action-btn green-btn" onclick="validateApiKey()">
-          <i class="fas fa-check-double"></i><span>Validate Key</span><div class="btn-shine"></div>
-        </button>
-        <div id="keyStatus" class="status-msg"></div>
-      </section>
+        <!-- STEP 1 -->
+        <section class="panel active" id="p1">
+            <div class="glass card">
+                <div class="card-top">
+                    <div class="card-ico"><i class="fas fa-key"></i></div>
+                    <h2>Enter API Key</h2>
+                    <p>Roblox Open Cloud API Key</p>
+                </div>
+                <div class="field">
+                    <label><i class="fas fa-shield-alt"></i> API Key</label>
+                    <div class="input-wrap">
+                        <input type="password" id="inKey" placeholder="Paste your API key here..." autocomplete="off">
+                        <button class="btn-ico" id="btnEye"><i class="fas fa-eye"></i></button>
+                    </div>
+                    <small class="hint"><i class="fas fa-lock"></i> Key hanya digunakan sesi ini, tidak disimpan</small>
+                </div>
+                <div id="keyStatus" class="status-msg"></div>
+                <div class="card-btns">
+                    <button class="btn btn-text" id="btnHowKey"><i class="fas fa-question-circle"></i> Cara dapat API Key?</button>
+                    <button class="btn btn-primary" id="btnValidate"><i class="fas fa-arrow-right"></i> Lanjut</button>
+                </div>
+            </div>
+        </section>
 
-      <!-- Step 3 -->
-      <section class="card glass-card anim-up" style="--d:.3s">
-        <div class="card-head">
-          <div class="card-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-          <div><h2>Step 3: Upload File</h2><p class="card-desc">Select your RBXM model</p></div>
-        </div>
-        <div class="drop-zone" id="dropZone">
-          <div class="drop-content">
-            <div class="drop-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-            <h3>Drag & Drop RBXM</h3>
-            <p>or click to browse</p>
-            <div class="drop-badges"><span class="badge">.rbxm</span><span class="badge">.rbxmx</span><span class="badge">Max 50MB</span></div>
-          </div>
-          <input type="file" id="fileInput" accept=".rbxm,.rbxmx" hidden>
-        </div>
-        <div class="file-preview" id="filePreview" style="display:none">
-          <div class="fp-icon"><i class="fas fa-file-code"></i></div>
-          <div class="fp-info"><span class="fp-name" id="fpName"></span><span class="fp-size" id="fpSize"></span></div>
-          <button class="fp-remove" onclick="clearFile()"><i class="fas fa-trash-alt"></i></button>
-        </div>
-      </section>
+        <!-- STEP 2 -->
+        <section class="panel" id="p2">
+            <div class="glass card">
+                <div class="card-top">
+                    <div class="card-ico"><i class="fas fa-cloud-upload-alt"></i></div>
+                    <h2>Upload File</h2>
+                    <p>Pilih file .rbxm atau .rbxmx</p>
+                </div>
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-inner">
+                        <i class="fas fa-cloud-upload-alt drop-icon"></i>
+                        <h3>Drop file di sini</h3>
+                        <p>atau klik untuk browse</p>
+                        <span class="badge">.rbxm / .rbxmx • max 50MB</span>
+                    </div>
+                    <input type="file" id="inFile" accept=".rbxm,.rbxmx" hidden>
+                </div>
+                <div id="fileCard" class="file-card glass" style="display:none">
+                    <div class="fc-ico"><i class="fas fa-cube"></i></div>
+                    <div class="fc-info">
+                        <b id="fName">-</b>
+                        <small id="fSize">-</small>
+                    </div>
+                    <button class="btn-ico" id="btnRemove"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="card-btns">
+                    <button class="btn btn-ghost" id="btn2back"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-primary" id="btn2next" disabled><i class="fas fa-arrow-right"></i> Lanjut</button>
+                </div>
+            </div>
+        </section>
 
-      <!-- Step 4 -->
-      <section class="card glass-card anim-up" style="--d:.4s">
-        <div class="card-head">
-          <div class="card-icon"><i class="fas fa-pen-fancy"></i></div>
-          <div><h2>Step 4: Asset Details</h2><p class="card-desc">Name and describe your model</p></div>
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-heading"></i> Asset Name</label>
-          <input type="text" id="assetName" class="glass-input" placeholder="My Awesome Model" maxlength="50">
-          <div class="char-count"><span id="nameLen">0</span>/50</div>
-        </div>
-        <div class="form-group">
-          <label><i class="fas fa-align-left"></i> Description</label>
-          <textarea id="assetDesc" class="glass-input glass-textarea" placeholder="Optional description..." maxlength="1000" rows="3"></textarea>
-          <div class="char-count"><span id="descLen">0</span>/1000</div>
-        </div>
-      </section>
+        <!-- STEP 3 -->
+        <section class="panel" id="p3">
+            <div class="glass card">
+                <div class="card-top">
+                    <div class="card-ico"><i class="fas fa-cog"></i></div>
+                    <h2>Konfigurasi</h2>
+                    <p>Atur detail asset sebelum upload</p>
+                </div>
+                <div class="field">
+                    <label><i class="fas fa-tag"></i> Nama Asset *</label>
+                    <input type="text" id="inName" class="inp" placeholder="Nama asset..." maxlength="50">
+                    <small class="counter"><span id="cName">0</span>/50</small>
+                </div>
+                <div class="field">
+                    <label><i class="fas fa-align-left"></i> Deskripsi</label>
+                    <textarea id="inDesc" class="inp" rows="3" placeholder="Deskripsi (opsional)..." maxlength="1000"></textarea>
+                    <small class="counter"><span id="cDesc">0</span>/1000</small>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label><i class="fas fa-user-tag"></i> Creator Type</label>
+                        <div class="sel-wrap">
+                            <select id="inCreatorType" class="inp">
+                                <option value="User">User</option>
+                                <option value="Group">Group</option>
+                            </select>
+                            <i class="fas fa-chevron-down sel-arrow"></i>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label><i class="fas fa-id-badge"></i> <span id="lblCid">User ID</span> *</label>
+                        <input type="text" id="inCid" class="inp" placeholder="Masukkan User ID...">
+                    </div>
+                </div>
+                <div class="card-btns">
+                    <button class="btn btn-ghost" id="btn3back"><i class="fas fa-arrow-left"></i> Back</button>
+                    <button class="btn btn-primary" id="btnUpload"><i class="fas fa-rocket"></i> Upload ke Roblox</button>
+                </div>
+            </div>
+        </section>
 
-      <!-- Convert -->
-      <div class="convert-wrap anim-up" style="--d:.5s">
-        <button class="mega-btn" id="megaBtn" onclick="doConvert()">
-          <div class="mega-bg"></div>
-          <div class="mega-inner"><i class="fas fa-rocket"></i><span>Convert & Upload</span></div>
-          <div class="mega-shine"></div>
-        </button>
-      </div>
+        <!-- STEP 4 -->
+        <section class="panel" id="p4">
+            <div class="glass card" id="resultBox"></div>
+        </section>
 
-      <!-- Progress -->
-      <section class="card glass-card" id="progressCard" style="display:none">
-        <div class="progress-wrap">
-          <div class="prog-spinner"><svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="20"></circle></svg><div class="prog-icon"><i class="fas fa-cog fa-spin"></i></div></div>
-          <h3 id="progTitle">Uploading...</h3>
-          <p id="progText">Sending file to Roblox</p>
-          <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
-          <div class="prog-pct" id="progPct">0%</div>
-        </div>
-      </section>
+    </div>
 
-      <!-- Result -->
-      <section class="card glass-card" id="resultCard" style="display:none">
-        <div class="result-wrap">
-          <div class="result-icon" id="resultIcon"><i class="fas fa-check-circle"></i></div>
-          <h3 id="resTitle">Success!</h3>
-          <p id="resMsg"></p>
-          <div class="result-grid" id="resultGrid" style="display:none">
-            <div class="res-item"><label>Asset ID</label><div class="res-row"><span class="res-val" id="resAssetId"></span><button class="copy-btn" onclick="copyEl('resAssetId')"><i class="fas fa-copy"></i></button></div></div>
-            <div class="res-item"><label>Toolbox URL</label><div class="res-row"><a class="res-link" id="resToolbox" href="#" target="_blank"></a><button class="copy-btn" onclick="copyEl('resToolbox')"><i class="fas fa-copy"></i></button></div></div>
-            <div class="res-item"><label>Studio Asset</label><div class="res-row"><span class="res-val" id="resStudio"></span><button class="copy-btn" onclick="copyEl('resStudio')"><i class="fas fa-copy"></i></button></div></div>
-          </div>
-          <button class="action-btn primary-btn" onclick="resetAll()"><i class="fas fa-redo-alt"></i><span>Convert Another</span></button>
-        </div>
-      </section>
-
-    </main>
-
-    <footer class="app-footer">
-      <p>Made with <i class="fas fa-heart beat"></i> for Roblox Devs &bull; Each user uses their own API key</p>
+    <!-- FOOTER -->
+    <footer class="glass footer">
+        <span><i class="fas fa-heart"></i> Built for Roblox Developers • <i class="fas fa-lock"></i> Secure</span>
     </footer>
-  </div>
+</div>
 
-  <div class="toast-stack" id="toastStack"></div>
-  <script src="script.js"></script>
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" class="overlay">
+    <div class="glass load-card">
+        <div class="spinner"><div></div><div></div><div></div></div>
+        <h3 id="loadTitle">Uploading...</h3>
+        <p id="loadMsg">Mohon tunggu</p>
+        <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+        <span class="prog-pct" id="progPct">0%</span>
+    </div>
+</div>
+
+<!-- HELP MODAL -->
+<div id="helpModal" class="overlay">
+    <div class="glass modal">
+        <div class="modal-head">
+            <h2><i class="fas fa-book-open"></i> Panduan</h2>
+            <button class="btn-ico" id="btnCloseHelp"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="help-tabs">
+            <button class="htab active" data-t="overview"><i class="fas fa-info-circle"></i> Overview</button>
+            <button class="htab" data-t="apikey"><i class="fas fa-key"></i> API Key</button>
+            <button class="htab" data-t="howto"><i class="fas fa-upload"></i> Cara Upload</button>
+            <button class="htab" data-t="userid"><i class="fas fa-user"></i> User ID</button>
+            <button class="htab" data-t="faq"><i class="fas fa-question"></i> FAQ</button>
+        </div>
+        <div class="help-body">
+
+            <div class="hpanel active" id="ht-overview">
+                <div class="help-hero"><i class="fas fa-exchange-alt"></i></div>
+                <h3>Apa itu RBXM Converter?</h3>
+                <p>Tool ini mengconvert file <b>.rbxm</b> (Roblox Model) menjadi <b>Asset ID</b> yang bisa dipakai di Toolbox Roblox Studio.</p>
+                <div class="flow-visual">
+                    <div class="fv"><div class="fv-i"><i class="fas fa-file"></i></div><span>.rbxm</span></div>
+                    <i class="fas fa-arrow-right fv-arrow"></i>
+                    <div class="fv"><div class="fv-i"><i class="fas fa-cloud-upload-alt"></i></div><span>Upload</span></div>
+                    <i class="fas fa-arrow-right fv-arrow"></i>
+                    <div class="fv"><div class="fv-i"><i class="fas fa-hashtag"></i></div><span>Asset ID</span></div>
+                </div>
+                <div class="info-box blue">
+                    <i class="fas fa-shield-alt"></i>
+                    <div><b>Privasi</b><p>API key TIDAK disimpan/di-log. Hanya dipakai saat sesi ini.</p></div>
+                </div>
+            </div>
+
+            <div class="hpanel" id="ht-apikey">
+                <h3><i class="fas fa-key"></i> Cara Mendapatkan API Key</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Buka Creator Dashboard</b><p>Kunjungi <a href="https://create.roblox.com/credentials" target="_blank">create.roblox.com/credentials</a></p></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Klik "CREATE API KEY"</b><p>Tombol di pojok kanan atas halaman credentials.</p></div></div>
+                    <div class="sl"><div class="sl-n">3</div><div><b>Beri Nama</b><p>Contoh: "RBXM Converter"</p></div></div>
+                    <div class="sl"><div class="sl-n">4</div><div><b>Add API System → "Assets"</b><p>Di bagian Access Permissions, pilih <b>Assets</b>.</p></div></div>
+                    <div class="sl"><div class="sl-n">5</div><div><b>Enable Read & Write</b><p>Centang kedua operasi untuk Assets API.</p></div></div>
+                    <div class="sl"><div class="sl-n">6</div><div><b>Tambah IP: 0.0.0.0/0</b><p>Di Security → Accepted IP → tambahkan <code>0.0.0.0/0</code></p></div></div>
+                    <div class="sl"><div class="sl-n">7</div><div><b>Copy API Key!</b><p>⚠️ Copy segera! Key tidak bisa dilihat lagi setelah ditutup.</p></div></div>
+                </div>
+                <div class="info-box yellow">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div><b>Penting!</b><p>Jangan share API key ke siapapun.</p></div>
+                </div>
+            </div>
+
+            <div class="hpanel" id="ht-howto">
+                <h3><i class="fas fa-upload"></i> Cara Upload</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Export dari Roblox Studio</b><p>Klik kanan model → "Save to File" → simpan sebagai <b>.rbxm</b></p></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Masukkan API Key</b><p>Paste key di Step 1, klik Validate.</p></div></div>
+                    <div class="sl"><div class="sl-n">3</div><div><b>Upload File</b><p>Drag & drop atau klik untuk pilih file .rbxm</p></div></div>
+                    <div class="sl"><div class="sl-n">4</div><div><b>Isi Konfigurasi</b><p>Nama asset, deskripsi, User/Group ID.</p></div></div>
+                    <div class="sl"><div class="sl-n">5</div><div><b>Dapatkan Asset ID!</b><p>Copy Asset ID dan gunakan di Toolbox Roblox Studio.</p></div></div>
+                </div>
+            </div>
+
+            <div class="hpanel" id="ht-userid">
+                <h3><i class="fas fa-user"></i> Cara Cari User ID</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Buka profil Roblox kamu</b><p>Login ke roblox.com → klik profil</p></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Lihat URL</b><p>URL akan seperti: <code>roblox.com/users/<b>123456789</b>/profile</code><br>Angka itu adalah <b>User ID</b></p></div></div>
+                </div>
+                <br>
+                <h3><i class="fas fa-users"></i> Cara Cari Group ID</h3>
+                <div class="steps-list">
+                    <div class="sl"><div class="sl-n">1</div><div><b>Buka halaman group</b><p>Buka group kamu di Roblox</p></div></div>
+                    <div class="sl"><div class="sl-n">2</div><div><b>Lihat URL</b><p><code>roblox.com/groups/<b>7654321</b>/nama</code><br>Angka itu adalah <b>Group ID</b></p></div></div>
+                </div>
+            </div>
+
+            <div class="hpanel" id="ht-faq">
+                <h3><i class="fas fa-question-circle"></i> FAQ</h3>
+                <div class="faq-list">
+                    <div class="faq">
+                        <button class="faq-q"><span>File apa yang didukung?</span><i class="fas fa-chevron-down"></i></button>
+                        <div class="faq-a"><p><b>.rbxm</b> (binary) dan <b>.rbxmx</b> (XML). Max 50MB.</p></div>
+                    </div>
+                    <div class="faq">
+                        <button class="faq-q"><span>Apakah API key aman?</span><i class="fas fa-chevron-down"></i></button>
+                        <div class="faq-a"><p>Ya! Key hanya digunakan saat sesi, tidak disimpan di database manapun.</p></div>
+                    </div>
+                    <div class="faq">
+                        <button class="faq-q"><span>Kenapa upload gagal?</span><i class="fas fa-chevron-down"></i></button>
+                        <div class="faq-a"><p>Kemungkinan:<br>• API key invalid/expired<br>• Key tidak punya permission Assets (Read+Write)<br>• IP tidak di-whitelist (tambah 0.0.0.0/0)<br>• User/Group ID salah<br>• File corrupt/terlalu besar</p></div>
+                    </div>
+                    <div class="faq">
+                        <button class="faq-q"><span>Di mana asset saya setelah upload?</span><i class="fas fa-chevron-down"></i></button>
+                        <div class="faq-a"><p>• Search Asset ID di Toolbox Roblox Studio<br>• Kunjungi link Library yang diberikan<br>• Pakai script: <code>InsertService:LoadAsset(ID)</code></p></div>
+                    </div>
+                    <div class="faq">
+                        <button class="faq-q"><span>Bisa upload ke Group?</span><i class="fas fa-chevron-down"></i></button>
+                        <div class="faq-a"><p>Bisa! Ubah Creator Type ke "Group" dan masukkan Group ID. Pastikan akun API key punya izin upload di group tersebut.</p></div>
+                    </div>
+                    <div class="faq">
+                        <button class="faq-q"><span>Cara export .rbxm dari Studio?</span><i class="fas fa-chevron-down"></i></button>
+                        <div class="faq-a"><p>1. Pilih model di Explorer<br>2. Klik kanan → "Save to File..."<br>3. Pilih format .rbxm<br>4. Save</p></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<script src="script.js"></script>
 </body>
 </html>
