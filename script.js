@@ -1,572 +1,455 @@
-// =============================================
-// STATE
-// =============================================
-let selectedFile = null;
-let creatorVerified = false;
-let apiKeyValidated = false;
-let serverOnline = false;
-
-// =============================================
-// INIT
-// =============================================
-document.addEventListener('DOMContentLoaded', () => {
-  initStarsCanvas();
-  initDropZone();
-  initCounters();
-  initHelpTabs();
-  loadSaved();
-  checkServer();
+document.addEventListener('DOMContentLoaded',()=>{
+    initBG();
+    initApp();
 });
 
-// =============================================
-// SERVER CONNECTION CHECK
-// =============================================
-async function checkServer() {
-  const dot = document.getElementById('serverDot');
-  const banner = document.getElementById('connBanner');
-  const connMsg = document.getElementById('connMsg');
+// ═══════════════════════════════
+//  GALAXY BACKGROUND (Canvas)
+// ═══════════════════════════════
+function initBG(){
+    const c=document.getElementById('bgCanvas');
+    const ctx=c.getContext('2d');
+    let w,h,stars=[],nebs=[];
 
-  dot.className = 'server-dot';
-  dot.title = 'Checking server...';
+    function resize(){
+        w=c.width=window.innerWidth;
+        h=c.height=window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize',resize);
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    // stars
+    for(let i=0;i<180;i++){
+        stars.push({
+            x:Math.random()*w,y:Math.random()*h,
+            r:Math.random()*1.5+.3,
+            a:Math.random(),
+            s:Math.random()*.003+.001,
+            d:Math.random()>.5?1:-1
+        });
+    }
+    // nebulas
+    nebs=[
+        {x:w*.2,y:h*.3,r:250,c:'rgba(155,89,182,.06)',dx:.15,dy:.1},
+        {x:w*.8,y:h*.7,r:200,c:'rgba(52,152,219,.04)',dx:-.1,dy:.12},
+        {x:w*.5,y:h*.5,r:180,c:'rgba(231,76,60,.03)',dx:.08,dy:-.08}
+    ];
 
-    const res = await fetch('/api/health', {
-      signal: controller.signal
+    function draw(){
+        ctx.clearRect(0,0,w,h);
+        // bg gradient
+        const g=ctx.createRadialGradient(w*.3,h*.4,0,w*.5,h*.5,w*.7);
+        g.addColorStop(0,'#120625');
+        g.addColorStop(.5,'#0a0418');
+        g.addColorStop(1,'#06060f');
+        ctx.fillStyle=g;
+        ctx.fillRect(0,0,w,h);
+
+        // nebulas
+        nebs.forEach(n=>{
+            n.x+=n.dx;n.y+=n.dy;
+            if(n.x<-100||n.x>w+100)n.dx*=-1;
+            if(n.y<-100||n.y>h+100)n.dy*=-1;
+            const ng=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,n.r);
+            ng.addColorStop(0,n.c);
+            ng.addColorStop(1,'transparent');
+            ctx.fillStyle=ng;
+            ctx.fillRect(n.x-n.r,n.y-n.r,n.r*2,n.r*2);
+        });
+
+        // stars
+        stars.forEach(s=>{
+            s.a+=s.s*s.d;
+            if(s.a>=1||s.a<=.1)s.d*=-1;
+            ctx.beginPath();
+            ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+            ctx.fillStyle=`rgba(255,255,255,${s.a})`;
+            ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+    }
+    draw();
+}
+
+// ═══════════════════════════════
+//  APP LOGIC
+// ═══════════════════════════════
+let step=1, apiKey='', file=null;
+
+function initApp(){
+    // Step 1
+    $('btnValidate').onclick=validateKey;
+    $('inKey').onkeydown=e=>{if(e.key==='Enter')validateKey()};
+    $('btnEye').onclick=()=>{
+        const i=$('inKey');
+        const ico=$('btnEye').querySelector('i');
+        if(i.type==='password'){i.type='text';ico.className='fas fa-eye-slash'}
+        else{i.type='password';ico.className='fas fa-eye'}
+    };
+    $('btnHowKey').onclick=()=>openHelp('apikey');
+
+    // Step 2
+    initDrop();
+    $('btnRemove').onclick=removeFile;
+    $('btn2next').onclick=()=>go(3);
+    $('btn2back').onclick=()=>go(1);
+
+    // Step 3
+    $('inName').oninput=e=>$('cName').textContent=e.target.value.length;
+    $('inDesc').oninput=e=>$('cDesc').textContent=e.target.value.length;
+    $('inCreatorType').onchange=e=>{
+        const g=e.target.value==='Group';
+        $('lblCid').textContent=g?'Group ID':'User ID';
+        $('inCid').placeholder=g?'Masukkan Group ID...':'Masukkan User ID...';
+    };
+    $('btnUpload').onclick=doUpload;
+    $('btn3back').onclick=()=>go(2);
+
+    // Help
+    $('btnHelp').onclick=()=>openHelp('overview');
+    $('btnCloseHelp').onclick=closeHelp;
+    $('helpModal').onclick=e=>{if(e.target===$('helpModal'))closeHelp()};
+    document.querySelectorAll('.htab').forEach(t=>t.onclick=()=>switchTab(t.dataset.t));
+    document.querySelectorAll('.faq-q').forEach(b=>b.onclick=()=>b.parentElement.classList.toggle('open'));
+    document.onkeydown=e=>{if(e.key==='Escape')closeHelp()};
+}
+
+function $(id){return document.getElementById(id)}
+
+// ═══════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════
+function go(s){
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    $('p'+s).classList.add('active');
+
+    document.querySelectorAll('.stp').forEach((el,i)=>{
+        const n=i+1;
+        el.classList.remove('active','done');
+        if(n<s)el.classList.add('done');
+        else if(n===s)el.classList.add('active');
     });
 
-    clearTimeout(timeout);
-
-    if (res.ok) {
-      const data = await res.json();
-      serverOnline = true;
-      dot.className = 'server-dot online';
-      dot.title = 'Server online (' + data.node + ')';
-      banner.style.display = 'none';
-
-      if (data.dependencies === 'missing - run npm install') {
-        banner.style.display = 'flex';
-        connMsg.textContent = 'Server running but dependencies missing. Run: npm install';
-        banner.style.background = 'rgba(245,158,11,.15)';
-        banner.style.borderColor = 'rgba(245,158,11,.3)';
-        connMsg.style.color = '#fbbf24';
-      }
-
-      console.log('✅ Server online:', data);
-      return true;
-    } else {
-      throw new Error('HTTP ' + res.status);
+    for(let i=1;i<=3;i++){
+        const line=$('line'+i);
+        if(line){
+            if(i<s)line.classList.add('filled');
+            else line.classList.remove('filled');
+        }
     }
-  } catch (err) {
-    serverOnline = false;
-    dot.className = 'server-dot offline';
-    dot.title = 'Server offline';
-    banner.style.display = 'flex';
-    connMsg.textContent = 'Cannot connect to server. Make sure server.js is running.';
-    banner.style.background = 'rgba(239,68,68,.15)';
-    banner.style.borderColor = 'rgba(239,68,68,.3)';
-    connMsg.style.color = '#fca5a5';
-
-    console.error('❌ Server offline:', err.message);
-    return false;
-  }
+    step=s;
 }
 
-// =============================================
-// STARS CANVAS
-// =============================================
-function initStarsCanvas() {
-  const canvas = document.getElementById('starsCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let stars = [], w, h;
+// ═══════════════════════════════
+//  STEP 1: VALIDATE KEY
+// ═══════════════════════════════
+async function validateKey(){
+    const key=$('inKey').value.trim();
+    const st=$('keyStatus');
+    const btn=$('btnValidate');
 
-  function resize() {
-    w = canvas.width = window.innerWidth;
-    h = canvas.height = window.innerHeight;
-  }
-
-  function make() {
-    const count = Math.min(Math.floor((w * h) / 5000), 250);
-    stars = [];
-    for (let i = 0; i < count; i++) {
-      stars.push({
-        x: Math.random() * w, y: Math.random() * h,
-        r: Math.random() * 1.8 + 0.3,
-        a: Math.random(), da: (Math.random() - .5) * .012,
-        dx: (Math.random() - .5) * .06
-      });
+    if(!key){
+        setStatus(st,'err','<i class="fas fa-exclamation-circle"></i> Masukkan API key');
+        toast('err','Error','Masukkan API key kamu');
+        return;
     }
-  }
 
-  function draw() {
-    ctx.clearRect(0, 0, w, h);
-    for (const s of stars) {
-      s.a += s.da;
-      if (s.a > 1 || s.a < .1) s.da *= -1;
-      s.x += s.dx;
-      if (s.x < 0) s.x = w;
-      if (s.x > w) s.x = 0;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${Math.max(0, Math.min(1, s.a))})`;
-      ctx.fill();
+    setStatus(st,'load','<i class="fas fa-spinner fa-spin"></i> Validating...');
+    btn.disabled=true;
+    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Checking...';
+
+    try{
+        const r=await fetch('/api/validate-key',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({apiKey:key})
+        });
+        const d=await r.json();
+
+        if(d.valid){
+            apiKey=key;
+            setStatus(st,'ok','<i class="fas fa-check-circle"></i> '+d.message);
+            toast('ok','Valid',d.message);
+            setTimeout(()=>go(2),600);
+        }else{
+            setStatus(st,'err','<i class="fas fa-times-circle"></i> '+d.message);
+            toast('err','Invalid',d.message);
+        }
+    }catch(e){
+        apiKey=key;
+        setStatus(st,'ok','<i class="fas fa-check-circle"></i> Key diterima');
+        toast('info','OK','Key diterima, akan divalidasi saat upload');
+        setTimeout(()=>go(2),600);
+    }finally{
+        btn.disabled=false;
+        btn.innerHTML='<i class="fas fa-arrow-right"></i> Lanjut';
     }
-    requestAnimationFrame(draw);
-  }
+}
 
-  resize(); make(); draw();
-  window.addEventListener('resize', () => { resize(); make(); });
+function setStatus(el,type,html){
+    el.className='status-msg '+type+' show';
+    el.innerHTML=html;
+}
 
-  // Shooting stars
-  function shoot() {
-    const sx = Math.random() * w * .7 + w * .15;
-    const sy = Math.random() * h * .3;
-    const len = Math.random() * 60 + 30;
-    const spd = Math.random() * 5 + 3;
-    const ang = Math.PI / 4 + (Math.random() - .5) * .3;
-    let p = 0;
-    function anim() {
-      p += spd;
-      const x = sx + Math.cos(ang) * p;
-      const y = sy + Math.sin(ang) * p;
-      const al = Math.max(0, 1 - p / (len * 8));
-      ctx.save();
-      ctx.globalAlpha = al;
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - Math.cos(ang) * len, y - Math.sin(ang) * len);
-      ctx.stroke();
-      ctx.restore();
-      if (al > 0) requestAnimationFrame(anim);
+// ═══════════════════════════════
+//  STEP 2: FILE UPLOAD
+// ═══════════════════════════════
+function initDrop(){
+    const z=$('dropZone'), fi=$('inFile');
+    z.onclick=()=>fi.click();
+    z.ondragover=e=>{e.preventDefault();z.classList.add('over')};
+    z.ondragleave=e=>{e.preventDefault();z.classList.remove('over')};
+    z.ondrop=e=>{e.preventDefault();z.classList.remove('over');if(e.dataTransfer.files.length)pickFile(e.dataTransfer.files[0])};
+    fi.onchange=e=>{if(e.target.files.length)pickFile(e.target.files[0])};
+}
+
+function pickFile(f){
+    const ext=f.name.split('.').pop().toLowerCase();
+    if(ext!=='rbxm'&&ext!=='rbxmx'){toast('err','Error','Hanya .rbxm / .rbxmx');return}
+    if(f.size>50*1024*1024){toast('err','Error','Max 50MB');return}
+
+    file=f;
+    $('fName').textContent=f.name;
+    $('fSize').textContent=fmtSize(f.size);
+    $('fileCard').style.display='flex';
+    $('dropZone').style.display='none';
+    $('btn2next').disabled=false;
+
+    const base=f.name.replace(/\.(rbxm|rbxmx)$/i,'');
+    if(!$('inName').value){
+        $('inName').value=base.substring(0,50);
+        $('cName').textContent=$('inName').value.length;
     }
-    anim();
-    setTimeout(shoot, Math.random() * 6000 + 3000);
-  }
-  setTimeout(shoot, 2000);
+    toast('ok','File dipilih',`${f.name} (${fmtSize(f.size)})`);
 }
 
-// =============================================
-// DROP ZONE
-// =============================================
-function initDropZone() {
-  const zone = document.getElementById('dropZone');
-  const input = document.getElementById('fileInput');
-  if (!zone || !input) return;
-
-  zone.addEventListener('click', () => input.click());
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
-  zone.addEventListener('dragleave', e => { e.preventDefault(); zone.classList.remove('over'); });
-  zone.addEventListener('drop', e => {
-    e.preventDefault(); zone.classList.remove('over');
-    if (e.dataTransfer.files.length) pickFile(e.dataTransfer.files[0]);
-  });
-  input.addEventListener('change', e => { if (e.target.files.length) pickFile(e.target.files[0]); });
+function removeFile(){
+    file=null;
+    $('inFile').value='';
+    $('fileCard').style.display='none';
+    $('dropZone').style.display='';
+    $('btn2next').disabled=true;
 }
 
-function pickFile(file) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  if (ext !== 'rbxm' && ext !== 'rbxmx') { toast('Only .rbxm and .rbxmx files', 'err'); return; }
-  if (file.size > 50 * 1024 * 1024) { toast('File too large (max 50MB)', 'err'); return; }
-
-  selectedFile = file;
-  document.getElementById('dropZone').style.display = 'none';
-  document.getElementById('filePreview').style.display = 'flex';
-  document.getElementById('fpName').textContent = file.name;
-  document.getElementById('fpSize').textContent = fmtSize(file.size);
-
-  const n = document.getElementById('assetName');
-  if (!n.value.trim()) { n.value = file.name.replace(/\.(rbxm|rbxmx)$/i, ''); updateCount('assetName', 'nameLen', 50); }
-  toast('File: ' + file.name, 'ok');
+function fmtSize(b){
+    if(b<1024)return b+' B';
+    if(b<1048576)return(b/1024).toFixed(1)+' KB';
+    return(b/1048576).toFixed(2)+' MB';
 }
 
-function clearFile() {
-  selectedFile = null;
-  document.getElementById('fileInput').value = '';
-  document.getElementById('filePreview').style.display = 'none';
-  document.getElementById('dropZone').style.display = '';
-  toast('File removed', 'inf');
-}
+// ═══════════════════════════════
+//  STEP 3: UPLOAD
+// ═══════════════════════════════
+async function doUpload(){
+    const name=$('inName').value.trim();
+    const desc=$('inDesc').value.trim();
+    const ctype=$('inCreatorType').value;
+    const cid=$('inCid').value.trim();
 
-function fmtSize(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-  return (b / 1048576).toFixed(1) + ' MB';
-}
+    if(!name){toast('err','Error','Masukkan nama asset');return}
+    if(!cid){toast('err','Error','Masukkan '+ctype+' ID');return}
+    if(!/^\d+$/.test(cid)){toast('err','Error','ID harus angka');return}
+    if(!file){toast('err','Error','Pilih file dulu');go(2);return}
 
-// =============================================
-// CHAR COUNTERS
-// =============================================
-function initCounters() {
-  const a = document.getElementById('assetName');
-  const b = document.getElementById('assetDesc');
-  if (a) a.addEventListener('input', () => updateCount('assetName', 'nameLen', 50));
-  if (b) b.addEventListener('input', () => updateCount('assetDesc', 'descLen', 1000));
-}
+    showLoad('Uploading...','Mengirim file ke Roblox');
 
-function updateCount(iid, sid, max) {
-  const len = document.getElementById(iid).value.length;
-  const s = document.getElementById(sid);
-  s.textContent = len;
-  s.style.color = len >= max ? 'var(--red)' : '';
-}
+    const fd=new FormData();
+    fd.append('rbxmFile',file);
+    fd.append('apiKey',apiKey);
+    fd.append('assetName',name);
+    fd.append('assetDescription',desc);
+    fd.append('creatorType',ctype);
+    fd.append('creatorId',cid);
 
-// =============================================
-// VERIFY CREATOR
-// =============================================
-async function verifyCreator() {
-  const id = document.getElementById('creatorId').value.trim();
-  const type = document.getElementById('creatorType').value;
-  const status = document.getElementById('verifyStatus');
-  const card = document.getElementById('profileCard');
-  const btn = document.getElementById('verifyBtn');
+    let prog=0;
+    const pi=setInterval(()=>{
+        if(prog<85){
+            prog+=Math.random()*7+2;
+            if(prog>85)prog=85;
+            setProg(prog);
+            if(prog>30&&prog<37)setLoadText('Uploading...','Mengirim ke server Roblox');
+            if(prog>60&&prog<67)setLoadText('Processing...','Roblox memproses model kamu');
+        }
+    },500);
 
-  creatorVerified = false;
-  card.style.display = 'none';
+    try{
+        const r=await fetch('/api/upload',{method:'POST',body:fd});
+        clearInterval(pi);
+        setProg(95);
+        setLoadText('Finishing...','Hampir selesai!');
 
-  if (!id) { setStatus(status, 'err', 'Please enter a Creator ID'); return; }
-  if (!/^\d+$/.test(id)) { setStatus(status, 'err', 'ID must be numbers only (e.g. 123456789)'); return; }
+        const d=await r.json();
 
-  // Check server first
-  if (!serverOnline) {
-    const online = await checkServer();
-    if (!online) {
-      setStatus(status, 'err', 'Server not running. Start with: node server.js');
-      toast('Server offline! Run: node server.js', 'err');
-      return;
+        setTimeout(()=>{
+            setProg(100);
+            setTimeout(()=>{
+                hideLoad();
+                showResult(d);
+                go(4);
+                if(d.success&&d.assetId)confetti();
+            },350);
+        },400);
+    }catch(e){
+        clearInterval(pi);
+        hideLoad();
+        showResult({success:false,message:'Network error: pastikan server berjalan.'});
+        go(4);
     }
-  }
+}
 
-  btn.disabled = true;
-  setStatus(status, 'load', 'Verifying with Roblox...');
+// ═══════════════════════════════
+//  LOADING OVERLAY
+// ═══════════════════════════════
+function showLoad(t,m){
+    $('loadTitle').textContent=t;
+    $('loadMsg').textContent=m;
+    $('progFill').style.width='0%';
+    $('progPct').textContent='0%';
+    $('loadingOverlay').classList.add('show');
+}
+function setLoadText(t,m){$('loadTitle').textContent=t;$('loadMsg').textContent=m}
+function setProg(p){$('progFill').style.width=p+'%';$('progPct').textContent=Math.round(p)+'%'}
+function hideLoad(){$('loadingOverlay').classList.remove('show')}
 
-  try {
-    const endpoint = type === 'Group' ? '/api/verify-group' : '/api/verify-user';
-    const body = type === 'Group' ? { groupId: id } : { userId: id };
+// ═══════════════════════════════
+//  RESULT
+// ═══════════════════════════════
+function showResult(d){
+    const box=$('resultBox');
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    if(d.success&&d.assetId){
+        box.innerHTML=`
+        <div class="result">
+            <div class="res-ico ok"><i class="fas fa-check-circle"></i></div>
+            <h2 class="res-title">Upload Berhasil! 🎉</h2>
+            <p class="res-msg">${d.message||'Asset berhasil diupload ke Roblox'}</p>
+            <div class="res-details">
+                <div class="res-row">
+                    <span class="res-label">Asset ID</span>
+                    <span class="res-val">${d.assetId} <button class="btn-ico copy-btn" onclick="copyTxt('${d.assetId}','Asset ID')"><i class="fas fa-copy"></i></button></span>
+                </div>
+                ${d.toolboxUrl?`<div class="res-row"><span class="res-label">Library</span><span class="res-val"><a href="${d.toolboxUrl}" target="_blank">${d.toolboxUrl}</a> <button class="btn-ico copy-btn" onclick="copyTxt('${d.toolboxUrl}','URL')"><i class="fas fa-copy"></i></button></span></div>`:''}
+                ${d.studioUrl?`<div class="res-row"><span class="res-label">Studio URL</span><span class="res-val"><code>${d.studioUrl}</code> <button class="btn-ico copy-btn" onclick="copyTxt('${d.studioUrl}','Studio URL')"><i class="fas fa-copy"></i></button></span></div>`:''}
+            </div>
+            <div class="res-actions">
+                ${d.toolboxUrl?`<a href="${d.toolboxUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none"><i class="fas fa-external-link-alt"></i> Buka di Roblox</a>`:''}
+                <button class="btn btn-ghost" onclick="resetAll()"><i class="fas fa-redo"></i> Convert Lagi</button>
+            </div>
+        </div>`;
+        toast('ok','Berhasil!','Asset ID: '+d.assetId);
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal
+    }else if(d.success&&!d.assetId){
+        box.innerHTML=`
+        <div class="result">
+            <div class="res-ico wait"><i class="fas fa-clock"></i></div>
+            <h2 class="res-title">Upload Dikirim ⏳</h2>
+            <p class="res-msg">${d.message||'Asset sedang diproses Roblox. Cek inventory dalam beberapa menit.'}</p>
+            <div class="res-actions">
+                <a href="https://create.roblox.com/dashboard/creations" target="_blank" class="btn btn-primary" style="text-decoration:none"><i class="fas fa-external-link-alt"></i> Cek Dashboard</a>
+                <button class="btn btn-ghost" onclick="resetAll()"><i class="fas fa-redo"></i> Convert Lagi</button>
+            </div>
+        </div>`;
+        toast('info','Processing','Cek inventory Roblox kamu');
+
+    }else{
+        box.innerHTML=`
+        <div class="result">
+            <div class="res-ico err"><i class="fas fa-exclamation-triangle"></i></div>
+            <h2 class="res-title">Upload Gagal</h2>
+            <p class="res-msg">${d.message||'Terjadi kesalahan'}</p>
+            <div class="info-box yellow" style="margin-bottom:18px;text-align:left">
+                <i class="fas fa-lightbulb"></i>
+                <div>
+                    <b>Tips Troubleshoot</b>
+                    <p>• Cek permission API key (Assets Read+Write)<br>• Pastikan IP 0.0.0.0/0 di allowed IPs<br>• Pastikan User/Group ID benar<br>• Coba file yang lebih kecil</p>
+                </div>
+            </div>
+            <div class="res-actions">
+                <button class="btn btn-ghost" onclick="go(1)"><i class="fas fa-key"></i> Cek API Key</button>
+                <button class="btn btn-primary" onclick="go(3)"><i class="fas fa-redo"></i> Coba Lagi</button>
+            </div>
+        </div>`;
+        toast('err','Gagal',d.message||'Upload error');
+    }
+}
+
+// ═══════════════════════════════
+//  UTILITIES
+// ═══════════════════════════════
+function copyTxt(txt,label){
+    navigator.clipboard.writeText(txt).then(()=>{
+        toast('ok','Copied!',label+' disalin ke clipboard');
+    }).catch(()=>{
+        const ta=document.createElement('textarea');
+        ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+        toast('ok','Copied!',label+' disalin');
     });
+}
 
-    clearTimeout(timeout);
+function resetAll(){
+    file=null;
+    $('inFile').value='';
+    $('fileCard').style.display='none';
+    $('dropZone').style.display='';
+    $('btn2next').disabled=true;
+    $('inName').value='';$('inDesc').value='';
+    $('cName').textContent='0';$('cDesc').textContent='0';
+    go(1);
+}
 
-    const data = await res.json();
+// expose to onclick in HTML
+window.go=go;
+window.copyTxt=copyTxt;
+window.resetAll=resetAll;
 
-    if (data.success) {
-      creatorVerified = true;
-      setStatus(status, 'ok', data.message);
+// ═══════════════════════════════
+//  HELP MODAL
+// ═══════════════════════════════
+function openHelp(tab){
+    $('helpModal').classList.add('show');
+    switchTab(tab||'overview');
+    document.body.style.overflow='hidden';
+}
+function closeHelp(){
+    $('helpModal').classList.remove('show');
+    document.body.style.overflow='';
+}
+function switchTab(t){
+    document.querySelectorAll('.htab').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+    document.querySelectorAll('.hpanel').forEach(p=>p.classList.toggle('active',p.id==='ht-'+t));
+}
 
-      if (type === 'User' && data.user) {
-        document.getElementById('profileName').textContent = data.user.displayName;
-        document.getElementById('profileSub').textContent = '@' + data.user.name;
-        const d = new Date(data.user.created);
-        document.getElementById('profileMeta').textContent = 'Joined ' + d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-        document.getElementById('profileBadge').innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+// ═══════════════════════════════
+//  TOASTS
+// ═══════════════════════════════
+function toast(type,title,msg){
+    const icons={ok:'fas fa-check-circle',err:'fas fa-exclamation-circle',info:'fas fa-info-circle',warn:'fas fa-exclamation-triangle'};
+    const el=document.createElement('div');
+    el.className='toast '+type;
+    el.innerHTML=`
+        <i class="${icons[type]||icons.info} toast-i"></i>
+        <div class="toast-c"><div class="toast-t">${title}</div><div class="toast-m">${msg}</div></div>
+        <button class="toast-x" onclick="this.parentElement.classList.add('out');setTimeout(()=>this.parentElement.remove(),250)"><i class="fas fa-times"></i></button>
+    `;
+    $('toasts').appendChild(el);
+    setTimeout(()=>{if(el.parentElement){el.classList.add('out');setTimeout(()=>el.remove(),250)}},4500);
+}
 
-        // Avatar
-        try {
-          const avRes = await fetch('/api/avatar/' + data.user.id);
-          const avData = await avRes.json();
-          document.getElementById('profileAvatar').src = avData.success && avData.imageUrl ? avData.imageUrl : '';
-        } catch (e) { document.getElementById('profileAvatar').src = ''; }
-
-        card.style.display = 'flex';
-      } else if (type === 'Group' && data.group) {
-        document.getElementById('profileName').textContent = data.group.name;
-        document.getElementById('profileSub').textContent = data.group.memberCount + ' members';
-        document.getElementById('profileMeta').textContent = data.group.owner ? 'Owner: ' + data.group.owner.displayName : '';
-        document.getElementById('profileBadge').innerHTML = '<i class="fas fa-check-circle"></i> Verified';
-        document.getElementById('profileAvatar').src = '';
-        card.style.display = 'flex';
-      }
-
-      saveLocal();
-      toast(data.message, 'ok');
-    } else {
-      setStatus(status, 'err', data.message);
-      toast(data.message, 'err');
+// ═══════════════════════════════
+//  CONFETTI
+// ═══════════════════════════════
+function confetti(){
+    const box=document.createElement('div');
+    box.className='confetti-box';
+    document.body.appendChild(box);
+    const colors=['#9b59b6','#3498db','#2ecc71','#f39c12','#e74c3c','#c39bd3','#8e44ad','#1abc9c'];
+    for(let i=0;i<70;i++){
+        const c=document.createElement('div');
+        c.className='conf';
+        const sz=Math.random()*7+3;
+        c.style.cssText=`left:${Math.random()*100}%;width:${sz}px;height:${sz*(Math.random()*.5+.5)}px;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${Math.random()*2+2}s;animation-delay:${Math.random()*.8}s;border-radius:${Math.random()>.5?'50%':'2px'}`;
+        box.appendChild(c);
     }
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      setStatus(status, 'err', 'Request timed out. Server may be slow.');
-    } else {
-      setStatus(status, 'err', 'Connection failed: ' + err.message);
-      await checkServer();
-    }
-    toast('Verification failed', 'err');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// =============================================
-// API KEY
-// =============================================
-function toggleEye() {
-  const inp = document.getElementById('apiKey');
-  const ico = document.getElementById('eyeIcon');
-  if (inp.type === 'password') { inp.type = 'text'; ico.className = 'fas fa-eye-slash'; }
-  else { inp.type = 'password'; ico.className = 'fas fa-eye'; }
-}
-
-async function validateApiKey() {
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const cid = document.getElementById('creatorId').value.trim();
-  const ctype = document.getElementById('creatorType').value;
-  const status = document.getElementById('keyStatus');
-
-  apiKeyValidated = false;
-
-  if (!apiKey) { setStatus(status, 'err', 'Please enter your API key'); return; }
-  if (apiKey.length < 10) { setStatus(status, 'err', 'API key too short'); return; }
-  if (!creatorVerified || !cid) { setStatus(status, 'err', 'Verify Creator ID first (Step 1)'); return; }
-
-  if (!serverOnline) {
-    const online = await checkServer();
-    if (!online) { setStatus(status, 'err', 'Server offline'); return; }
-  }
-
-  setStatus(status, 'load', 'Validating with Roblox API...');
-
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-
-    const res = await fetch('/api/validate-key', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey, creatorId: cid, creatorType: ctype }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeout);
-    const data = await res.json();
-
-    if (data.success) {
-      apiKeyValidated = true;
-      setStatus(status, 'ok', data.message);
-      saveLocal();
-      toast('API Key valid!', 'ok');
-    } else {
-      setStatus(status, 'err', data.message);
-      toast(data.message, 'err');
-    }
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      setStatus(status, 'err', 'Timed out. Roblox API may be slow.');
-    } else {
-      setStatus(status, 'err', 'Connection failed: ' + err.message);
-      await checkServer();
-    }
-  }
-}
-
-// =============================================
-// CONVERT & UPLOAD
-// =============================================
-async function doConvert() {
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const cid = document.getElementById('creatorId').value.trim();
-  const ctype = document.getElementById('creatorType').value;
-  const aName = document.getElementById('assetName').value.trim();
-  const aDesc = document.getElementById('assetDesc').value.trim();
-
-  if (!creatorVerified) { toast('Verify Creator ID first (Step 1)', 'err'); return; }
-  if (!apiKey) { toast('Enter your API Key (Step 2)', 'err'); return; }
-  if (!selectedFile) { toast('Select an RBXM file (Step 3)', 'err'); return; }
-
-  if (!serverOnline) {
-    const online = await checkServer();
-    if (!online) { toast('Server offline! Run: node server.js', 'err'); return; }
-  }
-
-  saveLocal();
-
-  const btn = document.getElementById('megaBtn');
-  btn.disabled = true;
-
-  const prog = document.getElementById('progressCard');
-  const res = document.getElementById('resultCard');
-  res.style.display = 'none';
-  prog.style.display = '';
-  prog.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-  setProg('Preparing...', 'Packaging file for upload', 5);
-
-  try {
-    const fd = new FormData();
-    fd.append('rbxmFile', selectedFile);
-    fd.append('apiKey', apiKey);
-    fd.append('creatorId', cid);
-    fd.append('creatorType', ctype);
-    fd.append('assetName', aName || selectedFile.name.replace(/\.(rbxm|rbxmx)$/i, ''));
-    fd.append('assetDescription', aDesc || 'Uploaded via RBXM Converter');
-
-    setProg('Uploading...', 'Sending to server', 15);
-
-    let fakeProg = 15;
-    const progTimer = setInterval(() => {
-      fakeProg = Math.min(fakeProg + Math.random() * 6, 85);
-      setProg('Processing...', 'Roblox is processing your asset', fakeProg);
-    }, 1500);
-
-    const response = await fetch('/api/upload', { method: 'POST', body: fd });
-
-    clearInterval(progTimer);
-
-    const data = await response.json();
-
-    if (data.success) {
-      setProg('Finalizing...', 'Almost done!', 95);
-      await sleep(400);
-      setProg('Complete!', 'Asset ready!', 100);
-      await sleep(500);
-      prog.style.display = 'none';
-      showResult(true, data);
-    } else {
-      prog.style.display = 'none';
-      showResult(false, data);
-    }
-  } catch (err) {
-    console.error(err);
-    document.getElementById('progressCard').style.display = 'none';
-    showResult(false, { message: 'Connection error: ' + err.message });
-    await checkServer();
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function setProg(title, text, pct) {
-  document.getElementById('progTitle').textContent = title;
-  document.getElementById('progText').textContent = text;
-  document.getElementById('progFill').style.width = pct + '%';
-  document.getElementById('progPct').textContent = Math.round(pct) + '%';
-}
-
-function showResult(ok, data) {
-  const card = document.getElementById('resultCard');
-  card.style.display = '';
-
-  const icon = document.getElementById('resultIcon');
-  if (ok) {
-    icon.className = 'result-icon ok';
-    icon.innerHTML = '<i class="fas fa-check-circle"></i>';
-    document.getElementById('resTitle').textContent = 'Upload Successful!';
-    document.getElementById('resMsg').textContent = data.message || '';
-    document.getElementById('resultGrid').style.display = '';
-    document.getElementById('resAssetId').textContent = data.assetId;
-    const tb = document.getElementById('resToolbox');
-    tb.href = data.toolboxUrl; tb.textContent = data.toolboxUrl;
-    document.getElementById('resStudio').textContent = data.studioUrl;
-    toast('Asset ID: ' + data.assetId, 'ok');
-  } else {
-    icon.className = 'result-icon fail';
-    icon.innerHTML = '<i class="fas fa-times-circle"></i>';
-    document.getElementById('resTitle').textContent = 'Upload Failed';
-    document.getElementById('resMsg').textContent = data.message || 'Unknown error';
-    document.getElementById('resultGrid').style.display = 'none';
-    toast(data.message || 'Failed', 'err');
-  }
-
-  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function resetAll() {
-  clearFile();
-  document.getElementById('assetName').value = '';
-  document.getElementById('assetDesc').value = '';
-  document.getElementById('nameLen').textContent = '0';
-  document.getElementById('descLen').textContent = '0';
-  document.getElementById('resultCard').style.display = 'none';
-  document.getElementById('progressCard').style.display = 'none';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// =============================================
-// HELPERS
-// =============================================
-function setStatus(el, type, msg) {
-  const icons = { ok: 'fa-check-circle', err: 'fa-times-circle', load: 'fa-spinner fa-spin' };
-  el.className = 'status-msg ' + type;
-  el.innerHTML = '<i class="fas ' + icons[type] + '"></i> ' + msg;
-}
-
-function copyEl(id) {
-  const el = document.getElementById(id);
-  const text = el.textContent || el.innerText;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = el.closest('.res-row').querySelector('.copy-btn');
-    btn.classList.add('copied');
-    btn.innerHTML = '<i class="fas fa-check"></i>';
-    setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
-    toast('Copied!', 'ok');
-  }).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.cssText = 'position:fixed;left:-9999px';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta); toast('Copied!', 'ok');
-  });
-}
-
-function toast(msg, type) {
-  const stack = document.getElementById('toastStack');
-  const icons = { ok: 'fa-check-circle', err: 'fa-exclamation-circle', inf: 'fa-info-circle' };
-  const el = document.createElement('div');
-  el.className = 'toast ' + (type || 'inf');
-  el.innerHTML = '<i class="fas ' + (icons[type] || icons.inf) + '"></i><span>' + msg + '</span>';
-  stack.appendChild(el);
-  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 4000);
-}
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// =============================================
-// HELP MODAL
-// =============================================
-function openHelp() { document.getElementById('helpModal').classList.add('show'); document.body.style.overflow = 'hidden'; }
-function closeHelp() { document.getElementById('helpModal').classList.remove('show'); document.body.style.overflow = ''; }
-document.getElementById('helpModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeHelp(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHelp(); });
-
-function initHelpTabs() {
-  document.querySelectorAll('.help-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.help-nav-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.help-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-    });
-  });
-}
-
-// =============================================
-// LOCAL STORAGE
-// =============================================
-function saveLocal() {
-  const k = document.getElementById('apiKey').value;
-  const c = document.getElementById('creatorId').value;
-  const t = document.getElementById('creatorType').value;
-  if (k) localStorage.setItem('rc_k', k);
-  if (c) localStorage.setItem('rc_c', c);
-  localStorage.setItem('rc_t', t);
-}
-
-function loadSaved() {
-  const k = localStorage.getItem('rc_k');
-  const c = localStorage.getItem('rc_c');
-  const t = localStorage.getItem('rc_t');
-  if (k) document.getElementById('apiKey').value = k;
-  if (c) document.getElementById('creatorId').value = c;
-  if (t) document.getElementById('creatorType').value = t;
+    setTimeout(()=>box.remove(),5000);
 }
